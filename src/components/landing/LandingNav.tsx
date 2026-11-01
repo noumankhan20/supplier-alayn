@@ -12,6 +12,12 @@ import { LayoutGrid, User, LogOut, ChevronDown, Menu, X } from "lucide-react";
 import Skeleton from "react-loading-skeleton";
 import "react-loading-skeleton/dist/skeleton.css";
 
+const SECTION_LINKS = [
+  { label: "How it works", href: "/#how-it-works" },
+  { label: "What you get", href: "/#features" },
+  { label: "Questions", href: "/#faq" },
+];
+
 export default function LandingNav() {
   const [scrolled, setScrolled] = useState(false);
   const mounted = useHydrated();
@@ -100,7 +106,7 @@ export default function LandingNav() {
         <Link href="/" className="nav-brand flex items-center overflow-visible shrink-0">
           <Image
             src="/gptlogo.webp"
-            alt="Alayn — AI Operating System for Hospitality"
+            alt="Alayn Suppliers"
             width={480}
             height={111}
             sizes="120px"
@@ -109,6 +115,19 @@ export default function LandingNav() {
             loading="eager"
           />
         </Link>
+
+        {/* Section links */}
+        <div className="hidden md:flex items-center gap-1">
+          {SECTION_LINKS.map((l) => (
+            <a
+              key={l.href}
+              href={l.href}
+              className="rounded-full px-3.5 py-2 text-[13px] font-medium text-zinc-600 transition-colors hover:bg-zinc-100 hover:text-zinc-900"
+            >
+              {l.label}
+            </a>
+          ))}
+        </div>
 
         {/* Desktop Nav Actions */}
         <div className="hidden sm:flex items-center gap-2">
@@ -272,23 +291,24 @@ export default function LandingNav() {
             ) : (
               <div className="flex flex-col gap-3">
                 <Link
-                  href="/contact"
+                  href="/signup"
                   onClick={() => setMobileMenuOpen(false)}
                   className="flex items-center justify-center rounded-xl bg-[#C41E2A] px-4 py-3 text-[13px] font-bold text-white shadow-md transition-transform active:scale-95 min-h-[48px] mb-2"
                 >
-                  Book a demo
+                  Join as a supplier
                 </Link>
-                
+
                 <div className="flex flex-col gap-1 py-2 border-y border-zinc-100 mb-2">
-                  <Link href="#how-it-works" onClick={() => setMobileMenuOpen(false)} className="px-3 py-3 text-[13px] font-semibold text-zinc-800 hover:bg-zinc-50 rounded-lg transition-colors">
-                    Platform
-                  </Link>
-                  <Link href="#scene-convergence" onClick={() => setMobileMenuOpen(false)} className="px-3 py-3 text-[13px] font-semibold text-zinc-800 hover:bg-zinc-50 rounded-lg transition-colors">
-                    Modules
-                  </Link>
-                  <Link href="#scene-verticals" onClick={() => setMobileMenuOpen(false)} className="px-3 py-3 text-[13px] font-semibold text-zinc-800 hover:bg-zinc-50 rounded-lg transition-colors">
-                    Who it&apos;s for
-                  </Link>
+                  {SECTION_LINKS.map((l) => (
+                    <a
+                      key={l.href}
+                      href={l.href}
+                      onClick={() => setMobileMenuOpen(false)}
+                      className="px-3 py-3 text-[13px] font-semibold text-zinc-800 hover:bg-zinc-50 rounded-lg transition-colors"
+                    >
+                      {l.label}
+                    </a>
+                  ))}
                 </div>
 
                 <Link

@@ -3,6 +3,7 @@ import { Inter, Plus_Jakarta_Sans, Geist_Mono, Playfair_Display } from "next/fon
 import "./globals.css";
 import "@/styles/transitions.css";
 import ReduxProvider from "@/components/providers/ReduxProvider";
+import { ToastProvider } from "@/components/ui/Toast";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -27,9 +28,9 @@ const playfair = Playfair_Display({
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://suppliers.alaynai.com"),
-  title: "Alayn Suppliers Portal | Order Fulfillment & Catalog Management",
+  title: "Alayn Suppliers",
   description:
-    "Direct vendor portal for suppliers to receive restaurant purchase orders, fulfill shipments, manage inventory catalogs, and connect with restaurants on the Alayn network.",
+    "The supplier portal for Alayn: take purchase orders from restaurants, keep your price list current, and track every delivery.",
 };
 
 const introScript = `(function(){if(typeof window==='undefined')return;if(window.location.pathname!=='/')return;var d=document.documentElement,k='alayn-intro-seen';try{if(sessionStorage.getItem(k)||matchMedia('(prefers-reduced-motion: reduce)').matches){d.classList.add('intro-seen');return;}sessionStorage.setItem(k,'1');}catch(e){}window.__alaynIntro='play';d.classList.add('intro-wait');var go=function(){requestAnimationFrame(function(){d.classList.remove('intro-wait');});};setTimeout(go,1200);(function wait(){var o=document.querySelector('.alayn-intro');if(!o)return requestAnimationFrame(wait);Promise.all([].map.call(o.querySelectorAll('img'),function(i){return i.decode().catch(function(){});})).then(go);})();})();`;
@@ -50,7 +51,9 @@ export default function RootLayout({
       <body
         className={`${inter.variable} ${plusJakarta.variable} ${geistMono.variable} ${playfair.variable} antialiased min-h-screen`}
       >
-        <ReduxProvider>{children}</ReduxProvider>
+        <ReduxProvider>
+          <ToastProvider>{children}</ToastProvider>
+        </ReduxProvider>
       </body>
     </html>
   );

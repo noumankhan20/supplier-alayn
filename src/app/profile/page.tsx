@@ -1,765 +1,530 @@
 "use client";
 
 import React, { useState } from "react";
-import {
-  User,
-  Mail,
-  Phone,
-  Building2,
-  Lock,
-  Eye,
-  EyeOff,
-  Edit3,
-  Check,
-  Key,
-  ChevronDown,
-  ChevronUp,
-  AlertCircle,
-  CheckCircle2,
-  Tag,
-  MapPin,
-  Truck,
-} from "lucide-react";
-import SupplierLayout from "@/components/layout/SupplierLayout";
+import { Building2, User, Lock, Pencil, Loader2, Eye, EyeOff } from "lucide-react";
+import Skeleton from "react-loading-skeleton";
+import "react-loading-skeleton/dist/skeleton.css";
+import SupplierLayout, { PageHeader } from "@/components/layout/SupplierLayout";
+import Field, { inputClass } from "@/components/ui/Field";
+import { btn } from "@/components/ui/Modal";
+import { useToast } from "@/components/ui/Toast";
 import { useAppDispatch, useAppSelector } from "@/redux/store/hooks";
 import { setCredentials } from "@/redux/slices/authSlice";
-import {
-  useUpdateProfileMutation,
-  useChangePasswordMutation,
-} from "@/redux/slices/authApiSlice";
-import {
-  useGetMyProfileQuery,
-  useUpdateMyProfileMutation,
-} from "@/redux/slices/supplierApiSlice";
-import { passwordProblem } from "@/lib/passwordPolicy";
+import { useUpdateProfileMutation, useChangePasswordMutation } from "@/redux/slices/authApiSlice";
+import { useGetMyProfileQuery, useUpdateMyProfileMutation, SupplierProfileApi } from "@/redux/slices/supplierApiSlice";
+import { passwordProblem, PASSWORD_HINT } from "@/lib/passwordPolicy";
 import { apiErrorMessage } from "@/lib/apiError";
+import { cn } from "@/lib/utils";
 
-function getInitials(name: string): string {
-  if (!name) return "S";
-  return name
-    .split(" ")
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((w) => w[0].toUpperCase())
-    .join("");
+const SUPPLY_CATEGORIES = [
+  "Dairy & Eggs",
+  "Vegetables & Fresh Produce",
+  "Meat, Poultry & Seafood",
+  "Dry Goods & Grains",
+  "Oils & Condiments",
+  "Spices & Seasonings",
+  "Bakery & Bread",
+  "Beverages & Syrups",
+  "Packaging & Disposables",
+  "Cleaning & Hygiene",
+  "General Wholesale",
+];
+
+type BusinessForm = {
+  name: string;
+  contactPerson: string;
+  phone: string;
+  email: string;
+  address: string;
+  category: string;
+  gstNumber: string;
+  deliveryTerms: string;
+};
+
+const toBusinessForm = (p?: SupplierProfileApi): BusinessForm => ({
+  name: p?.name || "",
+  contactPerson: p?.contactPerson || "",
+  phone: p?.phone || "",
+  email: p?.email || "",
+  address: p?.address || "",
+  category: p?.category || "",
+  gstNumber: p?.gstNumber || "",
+  deliveryTerms: p?.deliveryTerms || "",
+});
+
+/** Card with a title row, an Edit button, and either a read view or a form. */
+function Section({
+  icon: Icon,
+  title,
+  description,
+  editing,
+  onEdit,
+  children,
+}: {
+  icon: React.ElementType;
+  title: string;
+  description: string;
+  editing?: boolean;
+  onEdit?: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <section className="rounded-2xl bg-white ring-1 ring-zinc-200">
+      <div className="flex items-start justify-between gap-4 border-b border-zinc-100 px-5 py-4 sm:px-6">
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#1B2A4A]/[0.06] text-[#1B2A4A]">
+            <Icon className="h-[18px] w-[18px]" />
+          </span>
+          <div>
+            <h2 className="font-semibold text-[#1B2A4A]">{title}</h2>
+            <p className="text-sm text-zinc-500">{description}</p>
+          </div>
+        </div>
+        {onEdit && !editing && (
+          <button type="button" onClick={onEdit} className={cn(btn.secondary, "h-9 px-3.5 text-[13px]")}>
+            <Pencil className="h-3.5 w-3.5" />
+            Edit
+          </button>
+        )}
+      </div>
+      <div className="px-5 py-5 sm:px-6">{children}</div>
+    </section>
+  );
+}
+
+function ReadRow({ label, value, mono }: { label: string; value?: string | null; mono?: boolean }) {
+  return (
+    <div>
+      <dt className="text-xs text-zinc-500">{label}</dt>
+      <dd className={cn("mt-0.5 text-sm", value ? "text-[#1B2A4A]" : "text-zinc-400", mono && value && "font-mono")}>
+        {value || "Not added"}
+      </dd>
+    </div>
+  );
+}
+
+function PasswordInput({
+  id,
+  value,
+  onChange,
+  autoComplete,
+  hasError,
+}: {
+  id: string;
+  value: string;
+  onChange: (v: string) => void;
+  autoComplete: string;
+  hasError?: boolean;
+}) {
+  const [show, setShow] = useState(false);
+  return (
+    <div className="relative">
+      <input
+        id={id}
+        type={show ? "text" : "password"}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        autoComplete={autoComplete}
+        className={inputClass(hasError, "h-11 pr-11")}
+      />
+      <button
+        type="button"
+        onClick={() => setShow((s) => !s)}
+        aria-label={show ? "Hide password" : "Show password"}
+        className="absolute inset-y-0 right-0 flex w-11 items-center justify-center text-zinc-400 hover:text-[#1B2A4A]"
+      >
+        {show ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+      </button>
+    </div>
+  );
 }
 
 export default function SupplierProfilePage() {
+  const toast = useToast();
   const dispatch = useAppDispatch();
   const user = useAppSelector((state) => state.auth.user);
 
-  // Business Profile Query & Mutation
-  const { data: supplierProfile } =
-    useGetMyProfileQuery();
-  const [updateSupplierProfile, { isLoading: isUpdatingSupplier }] =
-    useUpdateMyProfileMutation();
+  const { data: profile, isLoading: profileLoading } = useGetMyProfileQuery();
+  const [updateBusiness, { isLoading: savingBusiness }] = useUpdateMyProfileMutation();
+  const [updateAccount, { isLoading: savingAccount }] = useUpdateProfileMutation();
+  const [changePassword, { isLoading: changingPw }] = useChangePasswordMutation();
 
-  // User Account Mutations
-  const [updateProfile, { isLoading: isSavingUser }] =
-    useUpdateProfileMutation();
-  const [changePassword, { isLoading: isChangingPw }] =
-    useChangePasswordMutation();
+  // ---------- Business ----------
+  const [editingBusiness, setEditingBusiness] = useState(false);
+  const [business, setBusiness] = useState<BusinessForm>(toBusinessForm());
+  const [businessError, setBusinessError] = useState("");
 
-  // 1. Business Profile Form State
-  const [supplierEditMode, setSupplierEditMode] = useState(false);
-  const [supplierForm, setSupplierForm] = useState({
-    name: "",
-    contactPerson: "",
-    phone: "",
-    email: "",
-    address: "",
-    category: "",
-    gstNumber: "",
-    deliveryTerms: "",
-  });
-  const [supplierSuccessMsg, setSupplierSuccessMsg] = useState<string | null>(
-    null
-  );
-  const [supplierErrorMsg, setSupplierErrorMsg] = useState<string | null>(null);
-
-  // Refill the form whenever a new copy of the profile arrives (first load, or after a save).
-  // Done during render rather than in an effect, so the form never renders once with stale values.
-  const [syncedProfile, setSyncedProfile] = useState<typeof supplierProfile>(undefined);
-  if (supplierProfile && supplierProfile !== syncedProfile) {
-    setSyncedProfile(supplierProfile);
-    setSupplierForm({
-      name: supplierProfile.name || "",
-      contactPerson: supplierProfile.contactPerson || "",
-      phone: supplierProfile.phone || "",
-      email: supplierProfile.email || "",
-      address: supplierProfile.address || "",
-      category: supplierProfile.category || "",
-      gstNumber: supplierProfile.gstNumber || "",
-      deliveryTerms: supplierProfile.deliveryTerms || "",
-    });
+  // Refill the form whenever a fresh copy of the profile arrives (done during render, not in an effect)
+  const [syncedProfile, setSyncedProfile] = useState<SupplierProfileApi | undefined>(undefined);
+  if (profile && profile !== syncedProfile) {
+    setSyncedProfile(profile);
+    setBusiness(toBusinessForm(profile));
   }
 
-  const handleSupplierSave = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setSupplierSuccessMsg(null);
-    setSupplierErrorMsg(null);
+  const setB = (k: keyof BusinessForm, v: string) => {
+    setBusiness((b) => ({ ...b, [k]: v }));
+    if (businessError) setBusinessError("");
+  };
 
-    if (!supplierForm.name.trim()) {
-      setSupplierErrorMsg("Company / Supplier Name is required.");
+  const saveBusiness = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!business.name.trim()) {
+      setBusinessError("Enter your business name.");
+      document.getElementById("biz-name")?.focus();
       return;
     }
-
     try {
-      await updateSupplierProfile({
-        name: supplierForm.name.trim(),
-        contactPerson: supplierForm.contactPerson.trim() || undefined,
-        phone: supplierForm.phone.trim() || undefined,
-        email: supplierForm.email.trim() || undefined,
-        address: supplierForm.address.trim() || undefined,
-        category: supplierForm.category.trim() || undefined,
-        gstNumber: supplierForm.gstNumber.trim() || undefined,
-        deliveryTerms: supplierForm.deliveryTerms.trim() || undefined,
+      await updateBusiness({
+        name: business.name.trim(),
+        contactPerson: business.contactPerson.trim() || undefined,
+        phone: business.phone.trim() || undefined,
+        email: business.email.trim() || undefined,
+        address: business.address.trim() || undefined,
+        category: business.category.trim() || undefined,
+        gstNumber: business.gstNumber.trim() || undefined,
+        deliveryTerms: business.deliveryTerms.trim() || undefined,
       }).unwrap();
-      setSupplierSuccessMsg("Business profile updated successfully!");
-      setSupplierEditMode(false);
-      setTimeout(() => setSupplierSuccessMsg(null), 4000);
+      toast.success("Business details saved. Restaurants see the update straight away.");
+      setEditingBusiness(false);
     } catch (err) {
-      setSupplierErrorMsg(apiErrorMessage(err, "Failed to update business profile."));
+      setBusinessError(apiErrorMessage(err, "Couldn’t save your business details. Try again."));
     }
   };
 
-  // 2. Personal Profile Form State
-  const [userEditMode, setUserEditMode] = useState(false);
-  const [userFormData, setUserFormData] = useState({
-    name: user?.name || "",
-    phoneNo: user?.phoneNo || "",
-  });
-  const [userSuccessMsg, setUserSuccessMsg] = useState<string | null>(null);
-  const [userErrorMsg, setUserErrorMsg] = useState<string | null>(null);
-
-  // Same for the signed-in user's details
+  // ---------- Account ----------
+  const [editingAccount, setEditingAccount] = useState(false);
+  const [account, setAccount] = useState({ name: user?.name || "", phoneNo: user?.phoneNo || "" });
+  const [accountError, setAccountError] = useState("");
   const [syncedUser, setSyncedUser] = useState(user);
   if (user !== syncedUser) {
     setSyncedUser(user);
-    setUserFormData({
-      name: user?.name || "",
-      phoneNo: user?.phoneNo || "",
-    });
+    setAccount({ name: user?.name || "", phoneNo: user?.phoneNo || "" });
   }
 
-  const handleUserSave = async (e: React.FormEvent) => {
+  const saveAccount = async (e: React.FormEvent) => {
     e.preventDefault();
-    setUserSuccessMsg(null);
-    setUserErrorMsg(null);
-
-    if (!userFormData.name.trim()) {
-      setUserErrorMsg("Name cannot be empty.");
+    if (!account.name.trim()) {
+      setAccountError("Enter your name.");
       return;
     }
-
     try {
-      const res = await updateProfile({
-        name: userFormData.name.trim(),
-        phoneNo: userFormData.phoneNo.trim(),
-      }).unwrap();
-      const updatedUser = res?.data || res;
-      dispatch(setCredentials({ user: updatedUser }));
-      setUserSuccessMsg("Personal details updated!");
-      setUserEditMode(false);
-      setTimeout(() => setUserSuccessMsg(null), 4000);
+      const res = await updateAccount({ name: account.name.trim(), phoneNo: account.phoneNo.trim() }).unwrap();
+      dispatch(setCredentials({ user: res?.data || res }));
+      toast.success("Your details are saved.");
+      setEditingAccount(false);
     } catch (err) {
-      setUserErrorMsg(apiErrorMessage(err, "Failed to update personal details."));
+      setAccountError(apiErrorMessage(err, "Couldn’t save your details. Try again."));
     }
   };
 
-  // 3. Password Section State
-  const [showPasswordSection, setShowPasswordSection] = useState(false);
-  const [showOldPw, setShowOldPw] = useState(false);
-  const [showNewPw, setShowNewPw] = useState(false);
-  const [showConfirmPw, setShowConfirmPw] = useState(false);
-  const [pwForm, setPwForm] = useState({
-    oldPassword: "",
-    newPassword: "",
-    confirmPassword: "",
-  });
-  const [pwSuccessMsg, setPwSuccessMsg] = useState<string | null>(null);
-  const [pwErrorMsg, setPwErrorMsg] = useState<string | null>(null);
+  // ---------- Password ----------
+  const [pw, setPw] = useState({ oldPassword: "", newPassword: "", confirmPassword: "" });
+  const [pwError, setPwError] = useState<{ field?: keyof typeof pw; message: string } | null>(null);
+  const setPwField = (k: keyof typeof pw, v: string) => {
+    setPw((p) => ({ ...p, [k]: v }));
+    if (pwError) setPwError(null);
+  };
 
-  const handleChangePassword = async (e: React.FormEvent) => {
+  const savePassword = async (e: React.FormEvent) => {
     e.preventDefault();
-    setPwSuccessMsg(null);
-    setPwErrorMsg(null);
-
-    if (pwForm.newPassword !== pwForm.confirmPassword) {
-      setPwErrorMsg("New passwords do not match.");
-      return;
-    }
-    const prob = passwordProblem(pwForm.newPassword);
-    if (prob) {
-      setPwErrorMsg(prob);
-      return;
-    }
-
+    if (!pw.oldPassword) return setPwError({ field: "oldPassword", message: "Enter your current password." });
+    const problem = passwordProblem(pw.newPassword);
+    if (problem) return setPwError({ field: "newPassword", message: problem });
+    if (pw.newPassword !== pw.confirmPassword)
+      return setPwError({ field: "confirmPassword", message: "The new passwords don’t match." });
     try {
-      await changePassword({
-        oldPassword: pwForm.oldPassword,
-        newPassword: pwForm.newPassword,
-      }).unwrap();
-      setPwSuccessMsg("Password updated successfully!");
-      setPwForm({ oldPassword: "", newPassword: "", confirmPassword: "" });
-      setShowPasswordSection(false);
-      setTimeout(() => setPwSuccessMsg(null), 4000);
+      await changePassword({ oldPassword: pw.oldPassword, newPassword: pw.newPassword }).unwrap();
+      toast.success("Password changed.");
+      setPw({ oldPassword: "", newPassword: "", confirmPassword: "" });
     } catch (err) {
-      setPwErrorMsg(apiErrorMessage(err, "Failed to update password."));
+      setPwError({ message: apiErrorMessage(err, "Couldn’t change your password. Check your current password.") });
     }
   };
 
-  const initials = getInitials(user?.name || "");
+  const formActions = (onCancel: () => void, saving: boolean, label: string) => (
+    <div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+      <button type="button" onClick={onCancel} className={btn.secondary}>
+        Cancel
+      </button>
+      <button type="submit" disabled={saving} className={btn.primary}>
+        {saving && <Loader2 className="h-4 w-4 animate-spin" />}
+        {label}
+      </button>
+    </div>
+  );
 
   return (
     <SupplierLayout>
-      <div className="max-w-4xl mx-auto space-y-6 pb-12">
-        {/* Header Title */}
-        <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-xs">
-          <div className="flex items-center gap-2.5">
-            <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-[#1B2A4A]">
-              Vendor Profile &amp; Settings
-            </h1>
-            <span className="rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-bold text-emerald-800 border border-emerald-200">
-              Verified Partner
-            </span>
-          </div>
-          <p className="text-xs text-gray-500 font-medium mt-1">
-            Manage your company information, supply terms, login credentials, and security settings.
-          </p>
-        </div>
+      <div className="mx-auto max-w-3xl">
+        <PageHeader title="Business profile" description="What restaurants see about you, and your sign-in details." />
 
-        {/* Global Notifications */}
-        {supplierSuccessMsg && (
-          <div className="flex items-center gap-3 p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-medium">
-            <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-            <span>{supplierSuccessMsg}</span>
-          </div>
-        )}
-        {userSuccessMsg && (
-          <div className="flex items-center gap-3 p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-medium">
-            <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-            <span>{userSuccessMsg}</span>
-          </div>
-        )}
-        {pwSuccessMsg && (
-          <div className="flex items-center gap-3 p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-medium">
-            <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-            <span>{pwSuccessMsg}</span>
-          </div>
-        )}
-
-        {/* ─── 1. Supplier Business Profile Card ────────────────────────── */}
-        <div className="bg-white rounded-2xl border border-gray-200 shadow-xs overflow-hidden">
-          <div className="px-6 py-5 border-b border-gray-100 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-xl bg-[#1B2A4A]/5 border border-[#1B2A4A]/10 text-[#1B2A4A] flex items-center justify-center shrink-0">
-                <Building2 className="w-4 h-4" />
-              </div>
-              <div>
-                <h3 className="text-sm font-bold text-[#1B2A4A]">
-                  Supplier Business Profile
-                </h3>
-                <p className="text-[11px] text-gray-500">
-                  Visible to restaurants when placing purchase orders
-                </p>
-              </div>
-            </div>
-
-            {supplierEditMode ? (
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => setSupplierEditMode(false)}
-                  className="px-3 py-1.5 text-xs font-semibold rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  onClick={handleSupplierSave}
-                  disabled={isUpdatingSupplier}
-                  className="px-4 py-1.5 text-xs font-bold rounded-lg bg-[#D3232A] text-white hover:bg-[#b81d23] shadow-xs disabled:opacity-50 flex items-center gap-1.5"
-                >
-                  <Check className="w-3.5 h-3.5" />
-                  {isUpdatingSupplier ? "Saving..." : "Save"}
-                </button>
-              </div>
-            ) : (
-              <button
-                type="button"
-                onClick={() => setSupplierEditMode(true)}
-                className="px-4 py-1.5 text-xs font-bold rounded-lg bg-[#1B2A4A] text-white hover:bg-[#121c33] shadow-xs flex items-center gap-1.5"
-              >
-                <Edit3 className="w-3.5 h-3.5" />
-                Edit Business Details
-              </button>
-            )}
-          </div>
-
-          <div className="p-6">
-            {supplierErrorMsg && (
-              <div className="mb-4 flex items-center gap-2 p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs">
-                <AlertCircle className="w-4 h-4 shrink-0" />
-                <span>{supplierErrorMsg}</span>
-              </div>
-            )}
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 text-xs">
-              <div>
-                <label className="block font-bold text-[#1B2A4A] mb-1.5">
-                  Company / Supplier Business Name
-                </label>
-                {supplierEditMode ? (
-                  <input
-                    type="text"
-                    value={supplierForm.name}
-                    onChange={(e) =>
-                      setSupplierForm({ ...supplierForm, name: e.target.value })
-                    }
-                    className="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl focus:outline-none focus:border-[#D3232A]"
-                  />
-                ) : (
-                  <div className="p-2.5 bg-[#F8FAFC] border border-gray-100 rounded-xl font-bold text-gray-900">
-                    {supplierForm.name || "Not specified"}
-                  </div>
-                )}
-              </div>
-
-              <div>
-                <label className="block font-bold text-[#1B2A4A] mb-1.5">
-                  Contact Person
-                </label>
-                {supplierEditMode ? (
-                  <input
-                    type="text"
-                    value={supplierForm.contactPerson}
-                    onChange={(e) =>
-                      setSupplierForm({
-                        ...supplierForm,
-                        contactPerson: e.target.value,
-                      })
-                    }
-                    className="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl focus:outline-none focus:border-[#D3232A]"
-                  />
-                ) : (
-                  <div className="p-2.5 bg-[#F8FAFC] border border-gray-100 rounded-xl font-semibold text-gray-800">
-                    {supplierForm.contactPerson || "Not specified"}
-                  </div>
-                )}
-              </div>
-
-              <div>
-                <label className="block font-bold text-[#1B2A4A] mb-1.5">
-                  Supply Category
-                </label>
-                {supplierEditMode ? (
-                  <input
-                    type="text"
-                    value={supplierForm.category}
-                    onChange={(e) =>
-                      setSupplierForm({
-                        ...supplierForm,
-                        category: e.target.value,
-                      })
-                    }
-                    className="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl focus:outline-none focus:border-[#D3232A]"
-                  />
-                ) : (
-                  <div className="p-2.5 bg-[#F8FAFC] border border-gray-100 rounded-xl font-semibold text-gray-800 flex items-center gap-1.5">
-                    <Tag className="w-3.5 h-3.5 text-gray-400" />
-                    <span>{supplierForm.category || "General"}</span>
-                  </div>
-                )}
-              </div>
-
-              <div>
-                <label className="block font-bold text-[#1B2A4A] mb-1.5">
-                  GSTIN / Tax ID
-                </label>
-                {supplierEditMode ? (
-                  <input
-                    type="text"
-                    value={supplierForm.gstNumber}
-                    onChange={(e) =>
-                      setSupplierForm({
-                        ...supplierForm,
-                        gstNumber: e.target.value.toUpperCase(),
-                      })
-                    }
-                    className="w-full px-3 py-2 uppercase font-mono bg-white border border-gray-200 rounded-xl focus:outline-none focus:border-[#D3232A]"
-                  />
-                ) : (
-                  <div className="p-2.5 bg-[#F8FAFC] border border-gray-100 rounded-xl font-mono text-gray-800">
-                    {supplierForm.gstNumber || "Not registered / None"}
-                  </div>
-                )}
-              </div>
-
-              <div>
-                <label className="block font-bold text-[#1B2A4A] mb-1.5">
-                  Business Phone / WhatsApp
-                </label>
-                {supplierEditMode ? (
-                  <input
-                    type="text"
-                    value={supplierForm.phone}
-                    onChange={(e) =>
-                      setSupplierForm({
-                        ...supplierForm,
-                        phone: e.target.value,
-                      })
-                    }
-                    className="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl focus:outline-none focus:border-[#D3232A]"
-                  />
-                ) : (
-                  <div className="p-2.5 bg-[#F8FAFC] border border-gray-100 rounded-xl text-gray-800 flex items-center gap-1.5">
-                    <Phone className="w-3.5 h-3.5 text-gray-400" />
-                    <span>{supplierForm.phone || "Not specified"}</span>
-                  </div>
-                )}
-              </div>
-
-              <div>
-                <label className="block font-bold text-[#1B2A4A] mb-1.5">
-                  Orders Contact Email
-                </label>
-                {supplierEditMode ? (
-                  <input
-                    type="email"
-                    value={supplierForm.email}
-                    onChange={(e) =>
-                      setSupplierForm({
-                        ...supplierForm,
-                        email: e.target.value,
-                      })
-                    }
-                    className="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl focus:outline-none focus:border-[#D3232A]"
-                  />
-                ) : (
-                  <div className="p-2.5 bg-[#F8FAFC] border border-gray-100 rounded-xl text-gray-800 flex items-center gap-1.5">
-                    <Mail className="w-3.5 h-3.5 text-gray-400" />
-                    <span>{supplierForm.email || "Not specified"}</span>
-                  </div>
-                )}
-              </div>
-
-              <div className="sm:col-span-2">
-                <label className="block font-bold text-[#1B2A4A] mb-1.5">
-                  Warehouse / Dispatch Address
-                </label>
-                {supplierEditMode ? (
-                  <textarea
-                    rows={2}
-                    value={supplierForm.address}
-                    onChange={(e) =>
-                      setSupplierForm({
-                        ...supplierForm,
-                        address: e.target.value,
-                      })
-                    }
-                    className="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl focus:outline-none focus:border-[#D3232A]"
-                  />
-                ) : (
-                  <div className="p-2.5 bg-[#F8FAFC] border border-gray-100 rounded-xl text-gray-800 flex items-start gap-1.5">
-                    <MapPin className="w-3.5 h-3.5 text-gray-400 mt-0.5 shrink-0" />
-                    <span>{supplierForm.address || "Not specified"}</span>
-                  </div>
-                )}
-              </div>
-
-              <div className="sm:col-span-2">
-                <label className="block font-bold text-[#1B2A4A] mb-1.5">
-                  Delivery &amp; Payment Terms
-                </label>
-                {supplierEditMode ? (
-                  <input
-                    type="text"
-                    value={supplierForm.deliveryTerms}
-                    onChange={(e) =>
-                      setSupplierForm({
-                        ...supplierForm,
-                        deliveryTerms: e.target.value,
-                      })
-                    }
-                    className="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl focus:outline-none focus:border-[#D3232A]"
-                  />
-                ) : (
-                  <div className="p-2.5 bg-[#F8FAFC] border border-gray-100 rounded-xl text-gray-800 flex items-center gap-1.5">
-                    <Truck className="w-3.5 h-3.5 text-gray-400 shrink-0" />
-                    <span>
-                      {supplierForm.deliveryTerms || "Standard terms apply"}
-                    </span>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* ─── 2. Personal Account Credentials Card ─────────────────────── */}
-        <div className="bg-white rounded-2xl border border-gray-200 shadow-xs overflow-hidden">
-          <div className="px-6 py-5 border-b border-gray-100 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-xl bg-[#D3232A]/5 border border-[#D3232A]/10 text-[#D3232A] flex items-center justify-center shrink-0">
-                <User className="w-4 h-4" />
-              </div>
-              <div>
-                <h3 className="text-sm font-bold text-[#1B2A4A]">
-                  Personal Login Details
-                </h3>
-                <p className="text-[11px] text-gray-500">
-                  Your primary administrator account credentials
-                </p>
-              </div>
-            </div>
-
-            {userEditMode ? (
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => setUserEditMode(false)}
-                  className="px-3 py-1.5 text-xs font-semibold rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  onClick={handleUserSave}
-                  disabled={isSavingUser}
-                  className="px-4 py-1.5 text-xs font-bold rounded-lg bg-[#D3232A] text-white hover:bg-[#b81d23] shadow-xs disabled:opacity-50 flex items-center gap-1.5"
-                >
-                  <Check className="w-3.5 h-3.5" />
-                  {isSavingUser ? "Saving..." : "Save"}
-                </button>
-              </div>
-            ) : (
-              <button
-                type="button"
-                onClick={() => setUserEditMode(true)}
-                className="px-4 py-1.5 text-xs font-bold rounded-lg bg-gray-100 text-gray-700 hover:bg-gray-200 shadow-xs flex items-center gap-1.5"
-              >
-                <Edit3 className="w-3.5 h-3.5" />
-                Edit Account
-              </button>
-            )}
-          </div>
-
-          <div className="p-6">
-            {userErrorMsg && (
-              <div className="mb-4 flex items-center gap-2 p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs">
-                <AlertCircle className="w-4 h-4 shrink-0" />
-                <span>{userErrorMsg}</span>
-              </div>
-            )}
-
-            <div className="flex items-center gap-4 mb-6">
-              <div className="w-14 h-14 rounded-full bg-[#D3232A] text-white flex items-center justify-center text-xl font-extrabold shadow-xs">
-                {initials}
-              </div>
-              <div>
-                <h4 className="font-bold text-gray-900 text-sm">
-                  {user?.name || "Supplier User"}
-                </h4>
-                <p className="text-xs text-gray-400">{user?.email}</p>
-                <span className="inline-block mt-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-700 border border-emerald-200">
-                  Supplier Role
-                </span>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
-              <div>
-                <label className="block font-bold text-[#1B2A4A] mb-1.5">
-                  Full Name
-                </label>
-                {userEditMode ? (
-                  <input
-                    type="text"
-                    value={userFormData.name}
-                    onChange={(e) =>
-                      setUserFormData({ ...userFormData, name: e.target.value })
-                    }
-                    className="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl focus:outline-none focus:border-[#D3232A]"
-                  />
-                ) : (
-                  <div className="p-2.5 bg-[#F8FAFC] border border-gray-100 rounded-xl text-gray-800">
-                    {user?.name || "Not specified"}
-                  </div>
-                )}
-              </div>
-
-              <div>
-                <label className="block font-bold text-[#1B2A4A] mb-1.5">
-                  Personal Contact Phone
-                </label>
-                {userEditMode ? (
-                  <input
-                    type="text"
-                    value={userFormData.phoneNo}
-                    onChange={(e) =>
-                      setUserFormData({
-                        ...userFormData,
-                        phoneNo: e.target.value,
-                      })
-                    }
-                    className="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl focus:outline-none focus:border-[#D3232A]"
-                  />
-                ) : (
-                  <div className="p-2.5 bg-[#F8FAFC] border border-gray-100 rounded-xl text-gray-800">
-                    {user?.phoneNo || "Not specified"}
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* ─── 3. Security & Password Card ──────────────────────────────── */}
-        <div className="bg-white rounded-2xl border border-gray-200 shadow-xs overflow-hidden">
-          <button
-            type="button"
-            onClick={() => setShowPasswordSection(!showPasswordSection)}
-            className="w-full px-6 py-5 flex items-center justify-between hover:bg-gray-50/80 transition text-left"
+        <div className="space-y-5">
+          {/* Business */}
+          <Section
+            icon={Building2}
+            title="Your business"
+            description="Shown to restaurants when they find you and order."
+            editing={editingBusiness}
+            onEdit={profile ? () => setEditingBusiness(true) : undefined}
           >
-            <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-xl bg-gray-100 text-gray-600 flex items-center justify-center shrink-0">
-                <Lock className="w-4 h-4" />
-              </div>
-              <div>
-                <h3 className="text-sm font-bold text-[#1B2A4A]">
-                  Security &amp; Password
-                </h3>
-                <p className="text-[11px] text-gray-500">
-                  Update your vendor portal access password
-                </p>
-              </div>
-            </div>
-            {showPasswordSection ? (
-              <ChevronUp className="w-4 h-4 text-gray-400" />
-            ) : (
-              <ChevronDown className="w-4 h-4 text-gray-400" />
-            )}
-          </button>
-
-          {showPasswordSection && (
-            <div className="px-6 pb-6 pt-2 border-t border-gray-100">
-              <form onSubmit={handleChangePassword} className="space-y-4 text-xs">
-                {pwErrorMsg && (
-                  <div className="flex items-center gap-2 p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700">
-                    <AlertCircle className="w-4 h-4 shrink-0" />
-                    <span>{pwErrorMsg}</span>
+            {profileLoading ? (
+              <div className="grid gap-5 sm:grid-cols-2">
+                {[1, 2, 3, 4].map((i) => (
+                  <div key={i}>
+                    <Skeleton height={12} width={80} />
+                    <Skeleton height={16} width={180} className="mt-1" />
                   </div>
+                ))}
+              </div>
+            ) : editingBusiness ? (
+              <form onSubmit={saveBusiness} noValidate>
+                {businessError && (
+                  <p role="alert" className="mb-5 rounded-xl bg-rose-50 p-3.5 text-sm text-rose-700 ring-1 ring-rose-200">
+                    {businessError}
+                  </p>
                 )}
-
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                  <div>
-                    <label className="block font-bold text-[#1B2A4A] mb-1.5">
-                      Current Password
-                    </label>
-                    <div className="relative">
-                      <input
-                        type={showOldPw ? "text" : "password"}
-                        required
-                        value={pwForm.oldPassword}
-                        onChange={(e) =>
-                          setPwForm({ ...pwForm, oldPassword: e.target.value })
-                        }
-                        placeholder="••••••••"
-                        className="w-full px-3 py-2 pr-9 bg-white border border-gray-200 rounded-xl focus:outline-none focus:border-[#D3232A]"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowOldPw(!showOldPw)}
-                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                      >
-                        {showOldPw ? (
-                          <EyeOff className="w-4 h-4" />
-                        ) : (
-                          <Eye className="w-4 h-4" />
-                        )}
-                      </button>
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block font-bold text-[#1B2A4A] mb-1.5">
-                      New Password
-                    </label>
-                    <div className="relative">
-                      <input
-                        type={showNewPw ? "text" : "password"}
-                        required
-                        value={pwForm.newPassword}
-                        onChange={(e) =>
-                          setPwForm({ ...pwForm, newPassword: e.target.value })
-                        }
-                        placeholder="••••••••"
-                        className="w-full px-3 py-2 pr-9 bg-white border border-gray-200 rounded-xl focus:outline-none focus:border-[#D3232A]"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowNewPw(!showNewPw)}
-                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                      >
-                        {showNewPw ? (
-                          <EyeOff className="w-4 h-4" />
-                        ) : (
-                          <Eye className="w-4 h-4" />
-                        )}
-                      </button>
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block font-bold text-[#1B2A4A] mb-1.5">
-                      Confirm New Password
-                    </label>
-                    <div className="relative">
-                      <input
-                        type={showConfirmPw ? "text" : "password"}
-                        required
-                        value={pwForm.confirmPassword}
-                        onChange={(e) =>
-                          setPwForm({
-                            ...pwForm,
-                            confirmPassword: e.target.value,
-                          })
-                        }
-                        placeholder="••••••••"
-                        className="w-full px-3 py-2 pr-9 bg-white border border-gray-200 rounded-xl focus:outline-none focus:border-[#D3232A]"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowConfirmPw(!showConfirmPw)}
-                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                      >
-                        {showConfirmPw ? (
-                          <EyeOff className="w-4 h-4" />
-                        ) : (
-                          <Eye className="w-4 h-4" />
-                        )}
-                      </button>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="flex justify-end pt-2">
-                  <button
-                    type="submit"
-                    disabled={isChangingPw}
-                    className="px-5 py-2 text-xs font-bold rounded-xl bg-[#D3232A] text-white hover:bg-[#b81d23] shadow-xs flex items-center gap-1.5 disabled:opacity-50"
+                <div className="grid gap-5 sm:grid-cols-2">
+                  <Field id="biz-name" label="Business name" className="sm:col-span-2">
+                    <input
+                      id="biz-name"
+                      value={business.name}
+                      onChange={(e) => setB("name", e.target.value)}
+                      autoComplete="organization"
+                      className={inputClass(!!businessError && !business.name.trim(), "h-11")}
+                      autoFocus
+                    />
+                  </Field>
+                  <Field id="biz-category" label="What you mainly supply">
+                    <input
+                      id="biz-category"
+                      list="biz-category-options"
+                      value={business.category}
+                      onChange={(e) => setB("category", e.target.value)}
+                      className={inputClass(false, "h-11")}
+                    />
+                    <datalist id="biz-category-options">
+                      {SUPPLY_CATEGORIES.map((c) => (
+                        <option key={c} value={c} />
+                      ))}
+                    </datalist>
+                  </Field>
+                  <Field id="biz-contact" label="Contact person">
+                    <input
+                      id="biz-contact"
+                      value={business.contactPerson}
+                      onChange={(e) => setB("contactPerson", e.target.value)}
+                      autoComplete="name"
+                      className={inputClass(false, "h-11")}
+                    />
+                  </Field>
+                  <Field id="biz-phone" label="Orders phone / WhatsApp">
+                    <input
+                      id="biz-phone"
+                      type="tel"
+                      inputMode="tel"
+                      value={business.phone}
+                      onChange={(e) => setB("phone", e.target.value)}
+                      autoComplete="tel"
+                      className={inputClass(false, "h-11")}
+                    />
+                  </Field>
+                  <Field id="biz-email" label="Orders email">
+                    <input
+                      id="biz-email"
+                      type="email"
+                      inputMode="email"
+                      value={business.email}
+                      onChange={(e) => setB("email", e.target.value)}
+                      autoComplete="email"
+                      className={inputClass(false, "h-11")}
+                    />
+                  </Field>
+                  <Field id="biz-address" label="Dispatch address" className="sm:col-span-2">
+                    <textarea
+                      id="biz-address"
+                      rows={2}
+                      value={business.address}
+                      onChange={(e) => setB("address", e.target.value)}
+                      autoComplete="street-address"
+                      className={inputClass(false, "resize-none py-2.5")}
+                    />
+                  </Field>
+                  <Field
+                    id="biz-terms"
+                    label="Delivery & payment terms"
+                    optional
+                    hint="e.g. Next day before 9 AM · Pay in 15 days"
+                    className="sm:col-span-2"
                   >
-                    <Key className="w-3.5 h-3.5" />
-                    {isChangingPw ? "Updating..." : "Update Password"}
-                  </button>
+                    <input
+                      id="biz-terms"
+                      value={business.deliveryTerms}
+                      onChange={(e) => setB("deliveryTerms", e.target.value)}
+                      className={inputClass(false, "h-11")}
+                    />
+                  </Field>
+                  <Field id="biz-gst" label="GSTIN" optional>
+                    <input
+                      id="biz-gst"
+                      value={business.gstNumber}
+                      onChange={(e) => setB("gstNumber", e.target.value.toUpperCase())}
+                      className={inputClass(false, "h-11 font-mono uppercase")}
+                    />
+                  </Field>
                 </div>
+                {formActions(
+                  () => {
+                    setEditingBusiness(false);
+                    setBusiness(toBusinessForm(profile));
+                    setBusinessError("");
+                  },
+                  savingBusiness,
+                  "Save business details"
+                )}
               </form>
-            </div>
-          )}
+            ) : (
+              <dl className="grid gap-x-6 gap-y-5 sm:grid-cols-2">
+                <ReadRow label="Business name" value={business.name} />
+                <ReadRow label="What you mainly supply" value={business.category} />
+                <ReadRow label="Contact person" value={business.contactPerson} />
+                <ReadRow label="Orders phone / WhatsApp" value={business.phone} />
+                <ReadRow label="Orders email" value={business.email} />
+                <ReadRow label="GSTIN" value={business.gstNumber} mono />
+                <div className="sm:col-span-2">
+                  <ReadRow label="Dispatch address" value={business.address} />
+                </div>
+                <div className="sm:col-span-2">
+                  <ReadRow label="Delivery & payment terms" value={business.deliveryTerms} />
+                </div>
+              </dl>
+            )}
+          </Section>
+
+          {/* Account */}
+          <Section
+            icon={User}
+            title="Your account"
+            description="The person who signs in to this portal."
+            editing={editingAccount}
+            onEdit={() => setEditingAccount(true)}
+          >
+            {editingAccount ? (
+              <form onSubmit={saveAccount} noValidate>
+                {accountError && (
+                  <p role="alert" className="mb-5 rounded-xl bg-rose-50 p-3.5 text-sm text-rose-700 ring-1 ring-rose-200">
+                    {accountError}
+                  </p>
+                )}
+                <div className="grid gap-5 sm:grid-cols-2">
+                  <Field id="acc-name" label="Your name">
+                    <input
+                      id="acc-name"
+                      value={account.name}
+                      onChange={(e) => {
+                        setAccount((a) => ({ ...a, name: e.target.value }));
+                        if (accountError) setAccountError("");
+                      }}
+                      autoComplete="name"
+                      className={inputClass(!!accountError && !account.name.trim(), "h-11")}
+                      autoFocus
+                    />
+                  </Field>
+                  <Field id="acc-phone" label="Your phone">
+                    <input
+                      id="acc-phone"
+                      type="tel"
+                      inputMode="tel"
+                      value={account.phoneNo}
+                      onChange={(e) => setAccount((a) => ({ ...a, phoneNo: e.target.value }))}
+                      autoComplete="tel"
+                      className={inputClass(false, "h-11")}
+                    />
+                  </Field>
+                  <Field id="acc-email" label="Sign-in email" hint="Contact support to change the email you sign in with." className="sm:col-span-2">
+                    <input id="acc-email" value={user?.email || ""} disabled className={inputClass(false, "h-11")} />
+                  </Field>
+                </div>
+                {formActions(
+                  () => {
+                    setEditingAccount(false);
+                    setAccount({ name: user?.name || "", phoneNo: user?.phoneNo || "" });
+                    setAccountError("");
+                  },
+                  savingAccount,
+                  "Save my details"
+                )}
+              </form>
+            ) : (
+              <dl className="grid gap-x-6 gap-y-5 sm:grid-cols-2">
+                <ReadRow label="Your name" value={user?.name} />
+                <ReadRow label="Your phone" value={user?.phoneNo} />
+                <div className="sm:col-span-2">
+                  <ReadRow label="Sign-in email" value={user?.email} />
+                </div>
+              </dl>
+            )}
+          </Section>
+
+          {/* Password */}
+          <Section icon={Lock} title="Password" description="Use at least 8 characters, with a letter and a number.">
+            <form onSubmit={savePassword} noValidate>
+              {pwError && !pwError.field && (
+                <p role="alert" className="mb-5 rounded-xl bg-rose-50 p-3.5 text-sm text-rose-700 ring-1 ring-rose-200">
+                  {pwError.message}
+                </p>
+              )}
+              <div className="grid gap-5 sm:grid-cols-3">
+                <Field id="pw-old" label="Current password" error={pwError?.field === "oldPassword" ? pwError.message : undefined}>
+                  <PasswordInput
+                    id="pw-old"
+                    value={pw.oldPassword}
+                    onChange={(v) => setPwField("oldPassword", v)}
+                    autoComplete="current-password"
+                    hasError={pwError?.field === "oldPassword"}
+                  />
+                </Field>
+                <Field
+                  id="pw-new"
+                  label="New password"
+                  error={pwError?.field === "newPassword" ? pwError.message : undefined}
+                  hint={PASSWORD_HINT}
+                >
+                  <PasswordInput
+                    id="pw-new"
+                    value={pw.newPassword}
+                    onChange={(v) => setPwField("newPassword", v)}
+                    autoComplete="new-password"
+                    hasError={pwError?.field === "newPassword"}
+                  />
+                </Field>
+                <Field
+                  id="pw-confirm"
+                  label="Confirm new password"
+                  error={pwError?.field === "confirmPassword" ? pwError.message : undefined}
+                >
+                  <PasswordInput
+                    id="pw-confirm"
+                    value={pw.confirmPassword}
+                    onChange={(v) => setPwField("confirmPassword", v)}
+                    autoComplete="new-password"
+                    hasError={pwError?.field === "confirmPassword"}
+                  />
+                </Field>
+              </div>
+              <div className="mt-6 flex justify-end">
+                <button
+                  type="submit"
+                  disabled={changingPw || !pw.oldPassword || !pw.newPassword}
+                  className={btn.dark}
+                >
+                  {changingPw && <Loader2 className="h-4 w-4 animate-spin" />}
+                  Change password
+                </button>
+              </div>
+            </form>
+          </Section>
         </div>
       </div>
     </SupplierLayout>
   );
 }
-

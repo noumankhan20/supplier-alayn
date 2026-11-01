@@ -4,21 +4,43 @@ import React, { useState, useRef, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import {
-  Package,
-  Layers,
-  User,
-  LogOut,
-  ChevronDown,
-  ExternalLink,
-  Store,
-} from "lucide-react";
+import { Inbox, Layers, Building2, LogOut, ChevronDown, ExternalLink } from "lucide-react";
 import { useAppDispatch, useAppSelector } from "@/redux/store/hooks";
 import { useLogoutMutation } from "@/redux/slices/authApiSlice";
 import { logout } from "@/redux/slices/authSlice";
 import { baseApi } from "@/redux/store/baseApi";
+import { useGetSupplierPortalOrdersQuery } from "@/redux/slices/procurementApiSlice";
 import { MAIN_APP_URL } from "@/lib/apiBase";
 import { clearUserHint } from "@/components/landing/landingSession";
+import { cn } from "@/lib/utils";
+import { needsAction } from "@/lib/orderStatus";
+
+export const NAV_LINKS = [
+  { label: "Orders", href: "/orders", icon: Inbox },
+  { label: "Catalog", href: "/catalog", icon: Layers },
+  { label: "Business profile", href: "/profile", icon: Building2, short: "Profile" },
+] as const;
+
+/** Orders waiting on the supplier, for the nav badge (shares the orders page's cached query). */
+function useActionCount() {
+  const { data = [] } = useGetSupplierPortalOrdersQuery(undefined, { pollingInterval: 60_000 });
+  return data.filter((po) => needsAction(po.status)).length;
+}
+
+function Badge({ count, active }: { count: number; active?: boolean }) {
+  if (count <= 0) return null;
+  return (
+    <span
+      className={cn(
+        "min-w-5 rounded-full px-1.5 text-center text-[11px] font-semibold leading-5 tabular-nums",
+        active ? "bg-[#C41E2A] text-white" : "bg-[#C41E2A]/10 text-[#C41E2A]"
+      )}
+      aria-label={`${count} need action`}
+    >
+      {count}
+    </span>
+  );
+}
 
 export default function SupplierHeader() {
   const pathname = usePathname();
@@ -26,179 +48,169 @@ export default function SupplierHeader() {
   const dispatch = useAppDispatch();
   const [logoutApi] = useLogoutMutation();
   const user = useAppSelector((state) => state.auth.user);
+  const actionCount = useActionCount();
 
-  const [dropdownOpen, setDropdownOpen] = useState(false);
-  const dropdownRef = useRef<HTMLDivElement>(null);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
-        setDropdownOpen(false);
-      }
+    const onClick = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) setMenuOpen(false);
     };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setMenuOpen(false);
+    document.addEventListener("mousedown", onClick);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onClick);
+      document.removeEventListener("keydown", onKey);
+    };
   }, []);
 
   const initial = user?.name ? user.name.charAt(0).toUpperCase() : "S";
+  const isActive = (href: string) => pathname === href || pathname.startsWith(`${href}/`);
 
-  const navLinks = [
-    { label: "Purchase Orders", href: "/orders", icon: Package, exact: true },
-    { label: "My Catalog", href: "/catalog", icon: Layers },
-    { label: "Profile & Business", href: "/profile", icon: User },
-  ];
+  const signOut = async () => {
+    setMenuOpen(false);
+    try {
+      await logoutApi(undefined).unwrap();
+    } catch {
+      // Signing out locally is enough if the server can't be reached
+    } finally {
+      dispatch(baseApi.util.resetApiState());
+      dispatch(logout());
+      clearUserHint();
+      router.replace("/login");
+    }
+  };
 
   return (
-    <header className="sticky top-0 z-40 flex h-16 shrink-0 items-center justify-between border-b border-gray-200 bg-white px-4 shadow-xs sm:px-6 lg:px-8">
-      {/* Left: Brand Logo & Navigation */}
-      <div className="flex items-center gap-6">
-        <Link href="/orders" className="flex items-center gap-2.5">
-          <Image
-            src="/image1.png"
-            alt="Alayn Logo"
-            width={110}
-            height={36}
-            className="h-8 w-auto object-contain"
-            priority
-          />
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-bold text-emerald-800 border border-emerald-200">
-            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
-            Supplier Portal
-          </span>
-        </Link>
+    <>
+      <header className="sticky top-0 z-40 border-b border-zinc-200 bg-white/95 backdrop-blur">
+        <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-4 px-4 sm:px-6">
+          <div className="flex items-center gap-8">
+            <Link href="/orders" className="flex items-center gap-2.5" aria-label="Alayn Suppliers, orders">
+              <Image src="/alayn-logo-tm.png" alt="Alayn" width={960} height={188} sizes="110px" className="h-6 w-auto" priority />
+              <span className="rounded-md bg-[#1B2A4A] px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-white">
+                Suppliers
+              </span>
+            </Link>
 
-        {/* Desktop Nav Links */}
-        <nav className="hidden md:flex items-center space-x-1">
-          {navLinks.map((link) => {
-            const Icon = link.icon;
-            const isActive = link.exact
-              ? pathname === link.href
-              : pathname.startsWith(link.href);
-            return (
-              <Link
-                key={link.href}
-                href={link.href}
-                className={`flex items-center gap-2 px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors ${
-                  isActive
-                    ? "bg-[#1B2A4A]/5 text-[#1B2A4A] font-bold"
-                    : "text-gray-600 hover:text-gray-900 hover:bg-gray-100"
-                }`}
-              >
-                <Icon
-                  className={`w-4 h-4 ${
-                    isActive ? "text-[#D3232A]" : "text-gray-400"
-                  }`}
-                />
-                {link.label}
-              </Link>
-            );
-          })}
-        </nav>
-      </div>
+            <nav aria-label="Portal" className="hidden items-center gap-1 md:flex">
+              {NAV_LINKS.map(({ label, href, icon: Icon }) => {
+                const active = isActive(href);
+                return (
+                  <Link
+                    key={href}
+                    href={href}
+                    aria-current={active ? "page" : undefined}
+                    className={cn(
+                      "flex h-9 items-center gap-2 rounded-lg px-3 text-sm font-medium transition-colors",
+                      active ? "bg-[#1B2A4A]/[0.06] text-[#1B2A4A]" : "text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900"
+                    )}
+                  >
+                    <Icon className={cn("h-4 w-4", active ? "text-[#C41E2A]" : "text-zinc-400")} />
+                    {label}
+                    {href === "/orders" && <Badge count={actionCount} active={active} />}
+                  </Link>
+                );
+              })}
+            </nav>
+          </div>
 
-      {/* Right: User Profile Dropdown */}
-      <div className="flex items-center gap-4">
-        <div className="relative" ref={dropdownRef}>
-          <button
-            type="button"
-            onClick={() => setDropdownOpen((prev) => !prev)}
-            className="flex items-center gap-2 p-1.5 rounded-xl hover:bg-gray-100 transition"
-          >
-            <div className="h-8 w-8 rounded-full bg-[#D3232A] flex items-center justify-center text-xs font-bold text-white shadow-xs">
-              {initial}
-            </div>
-            <div className="hidden sm:block text-left text-xs">
-              <p className="font-bold text-gray-900 leading-tight">
+          <div className="relative" ref={menuRef}>
+            <button
+              type="button"
+              onClick={() => setMenuOpen((o) => !o)}
+              aria-expanded={menuOpen}
+              aria-haspopup="menu"
+              className="flex items-center gap-2.5 rounded-xl p-1.5 pr-2 transition-colors hover:bg-zinc-100"
+            >
+              <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[#1B2A4A] text-xs font-semibold text-white">
+                {initial}
+              </span>
+              <span className="hidden max-w-[160px] truncate text-sm font-medium text-[#1B2A4A] sm:block">
                 {user?.name || "Supplier"}
-              </p>
-              <p className="text-[10px] text-gray-400 leading-tight">
-                Vendor Account
-              </p>
-            </div>
-            <ChevronDown className="h-3.5 w-3.5 text-gray-500" />
-          </button>
+              </span>
+              <ChevronDown className={cn("h-4 w-4 text-zinc-400 transition-transform", menuOpen && "rotate-180")} />
+            </button>
 
-          {dropdownOpen && (
-            <div className="absolute right-0 mt-2 w-60 rounded-2xl bg-white p-2 shadow-xl ring-1 ring-black/5 z-50 animate-in fade-in slide-in-from-top-2 duration-150">
-              <div className="px-3 py-2 border-b border-gray-100 mb-1">
-                <p className="text-xs font-bold text-gray-900 truncate">
-                  {user?.name || "Supplier"}
-                </p>
-                <p className="text-[11px] text-gray-400 font-medium truncate">
-                  {user?.email || ""}
-                </p>
-                <span className="inline-block mt-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-700 border border-emerald-200">
-                  Verified Supplier
-                </span>
+            {menuOpen && (
+              <div role="menu" className="absolute right-0 mt-2 w-64 rounded-2xl bg-white p-2 shadow-xl ring-1 ring-black/5">
+                <div className="border-b border-zinc-100 px-3 pb-3 pt-2">
+                  <p className="truncate text-sm font-semibold text-[#1B2A4A]">{user?.name || "Supplier"}</p>
+                  <p className="truncate text-xs text-zinc-500">{user?.email}</p>
+                </div>
+                <div className="py-1">
+                  <Link
+                    role="menuitem"
+                    href="/profile"
+                    onClick={() => setMenuOpen(false)}
+                    className="flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm text-zinc-700 hover:bg-zinc-100"
+                  >
+                    <Building2 className="h-4 w-4 text-zinc-400" />
+                    Business profile & password
+                  </Link>
+                  <a
+                    role="menuitem"
+                    href={MAIN_APP_URL}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="flex items-center justify-between rounded-lg px-3 py-2 text-sm text-zinc-700 hover:bg-zinc-100"
+                  >
+                    <span className="flex items-center gap-2.5">
+                      <ExternalLink className="h-4 w-4 text-zinc-400" />
+                      Alayn for restaurants
+                    </span>
+                  </a>
+                </div>
+                <div className="border-t border-zinc-100 pt-1">
+                  <button
+                    role="menuitem"
+                    type="button"
+                    onClick={signOut}
+                    className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-sm font-medium text-rose-600 hover:bg-rose-50"
+                  >
+                    <LogOut className="h-4 w-4" />
+                    Sign out
+                  </button>
+                </div>
               </div>
-
-              <Link
-                href="/orders"
-                onClick={() => setDropdownOpen(false)}
-                className="flex items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-semibold text-gray-700 hover:bg-gray-100 hover:text-gray-900 transition"
-              >
-                <Package className="h-4 w-4 text-gray-400" />
-                Purchase Orders
-              </Link>
-
-              <Link
-                href="/catalog"
-                onClick={() => setDropdownOpen(false)}
-                className="flex items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-semibold text-gray-700 hover:bg-gray-100 hover:text-gray-900 transition"
-              >
-                <Layers className="h-4 w-4 text-gray-400" />
-                Catalog Management
-              </Link>
-
-              <Link
-                href="/profile"
-                onClick={() => setDropdownOpen(false)}
-                className="flex items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-semibold text-gray-700 hover:bg-gray-100 hover:text-gray-900 transition"
-              >
-                <User className="h-4 w-4 text-gray-400" />
-                Profile &amp; Settings
-              </Link>
-
-              <a
-                href={MAIN_APP_URL}
-                target="_blank"
-                rel="noreferrer"
-                className="flex items-center justify-between rounded-xl px-3 py-2 text-xs font-semibold text-gray-600 hover:bg-gray-100 hover:text-gray-900 transition"
-              >
-                <span className="flex items-center gap-2.5">
-                  <Store className="h-4 w-4 text-gray-400" />
-                  Alayn Restaurant OS
-                </span>
-                <ExternalLink className="h-3 w-3 text-gray-400" />
-              </a>
-
-              <div className="my-1 border-t border-gray-100" />
-
-              <button
-                type="button"
-                onClick={async () => {
-                  setDropdownOpen(false);
-                  try {
-                    await logoutApi(undefined).unwrap();
-                  } catch {
-                    // ignore network errors
-                  } finally {
-                    dispatch(baseApi.util.resetApiState());
-                    dispatch(logout());
-                    clearUserHint();
-                    router.replace("/login");
-                  }
-                }}
-                className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-semibold text-red-600 hover:bg-red-50 hover:text-red-700 transition text-left"
-              >
-                <LogOut className="h-4 w-4 text-red-500" />
-                Sign Out
-              </button>
-            </div>
-          )}
+            )}
+          </div>
         </div>
-      </div>
-    </header>
+      </header>
+
+      {/* Bottom tab bar on phones */}
+      <nav
+        aria-label="Portal"
+        className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-3 border-t border-zinc-200 bg-white pb-[env(safe-area-inset-bottom)] md:hidden"
+      >
+        {NAV_LINKS.map((link) => {
+          const { label, href, icon: Icon } = link;
+          const active = isActive(href);
+          return (
+            <Link
+              key={href}
+              href={href}
+              aria-current={active ? "page" : undefined}
+              className={cn(
+                "relative flex flex-col items-center gap-1 py-2.5 text-[11px] font-medium",
+                active ? "text-[#1B2A4A]" : "text-zinc-500"
+              )}
+            >
+              <span className="relative">
+                <Icon className={cn("h-5 w-5", active && "text-[#C41E2A]")} />
+                {href === "/orders" && actionCount > 0 && (
+                  <span className="absolute -right-2.5 -top-1.5 min-w-4 rounded-full bg-[#C41E2A] px-1 text-center text-[10px] font-semibold leading-4 text-white">
+                    {actionCount}
+                  </span>
+                )}
+              </span>
+              {"short" in link ? link.short : label}
+            </Link>
+          );
+        })}
+      </nav>
+    </>
   );
 }
-

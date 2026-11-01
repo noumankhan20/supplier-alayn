@@ -3,22 +3,17 @@ import type { Metadata } from "next";
 import { socialMetadata } from "@/lib/socialMetadata";
 import LandingNav from "@/components/landing/LandingNav";
 import LandingFooter from "@/components/landing/LandingFooter";
-import SceneProgress from "@/components/landing/SceneProgress";
-import SmoothScroll from "@/components/landing/motion/SmoothScroll";
-import { GlobalFieldProvider } from "@/components/landing/motion/GlobalField";
-import HeroScene from "@/components/landing/scenes/HeroScene";
-import TrustedByScene from "@/components/landing/scenes/TrustedByScene";
-import ChaosScene from "@/components/landing/scenes/ChaosScene";
-import ConvergenceScene from "@/components/landing/scenes/ConvergenceScene";
-import RunningScene from "@/components/landing/scenes/RunningScene";
-import VerticalsScene from "@/components/landing/scenes/VerticalsScene";
-import CalmScene from "@/components/landing/scenes/CalmScene";
-import WaitingScene from "@/components/landing/scenes/WaitingScene";
 import IntroReveal from "@/components/landing/IntroReveal";
+import SupplierHero from "@/components/landing/supplier/SupplierHero";
+import HowItWorks from "@/components/landing/supplier/HowItWorks";
+import Features from "@/components/landing/supplier/Features";
+import WhoItsFor from "@/components/landing/supplier/WhoItsFor";
+import Faq from "@/components/landing/supplier/Faq";
+import FinalCta from "@/components/landing/supplier/FinalCta";
 
-const title = "Alayn Suppliers | The Restaurant Vendor Network";
+const title = "Alayn Suppliers | Take purchase orders from restaurants";
 const description =
-  "Join the Alayn supplier network. Receive direct purchase orders from restaurants, cafés & cloud kitchens, manage live price catalogs, dispatch with partial order tracking, and get paid faster.";
+  "List your products and rates once. Restaurants on Alayn find you, compare prices and send purchase orders. Pack, dispatch in full or in part, and keep every order on track from one screen.";
 
 export const metadata: Metadata = {
   title: {
@@ -27,30 +22,26 @@ export const metadata: Metadata = {
   description,
   alternates: {
     canonical: "https://suppliers.alaynai.com",
-    types: { "text/markdown": "https://suppliers.alaynai.com/index.md" },
   },
   ...socialMetadata({ title, description, path: "" }),
 };
 
 export default function SupplierLandingPage() {
   return (
-    <SmoothScroll>
+    <>
       <IntroReveal />
-      <GlobalFieldProvider>
-        <div className="landing-root">
-          <LandingNav />
-          <SceneProgress />
-          <HeroScene />
-          <TrustedByScene />
-          <ChaosScene />
-          <ConvergenceScene />
-          <RunningScene />
-          <VerticalsScene />
-          <CalmScene />
-          <WaitingScene />
-          <LandingFooter />
-        </div>
-      </GlobalFieldProvider>
-    </SmoothScroll>
+      <div className="landing-root">
+        <LandingNav />
+        <main>
+          <SupplierHero />
+          <HowItWorks />
+          <Features />
+          <WhoItsFor />
+          <Faq />
+          <FinalCta />
+        </main>
+        <LandingFooter />
+      </div>
+    </>
   );
 }

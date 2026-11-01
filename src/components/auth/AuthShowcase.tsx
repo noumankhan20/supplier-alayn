@@ -1,58 +1,64 @@
 import React from "react";
+import { Check } from "lucide-react";
+
+/**
+ * Right-hand panel on login and signup. Shows what the portal is for, with a
+ * small illustrative order card (sample data) in the same style as the landing hero.
+ */
+const POINTS = [
+  "Purchase orders from restaurants, in one inbox",
+  "Dispatch in full or in part, with a date for the rest",
+  "Change a rate once, and new orders use it",
+];
 
 export default function AuthShowcase() {
   return (
-    <div className="relative w-full h-full flex flex-col items-center justify-center p-8 lg:p-16 text-white overflow-hidden bg-[#1B2A4A] border-l border-white/[0.05]">
-      {/* Morphing Liquid Glass Auroras */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none mix-blend-screen">
-        <div
-          className="absolute -top-[20%] -left-[10%] w-[70%] h-[70%] rounded-full bg-[#C41E2A]/20 blur-[120px] animate-pulse"
-          style={{ animationDuration: "10s" }}
-        />
-        <div
-          className="absolute bottom-[10%] right-[0%] w-[60%] h-[60%] rounded-full bg-[#243556]/50 blur-[100px] animate-pulse"
-          style={{ animationDuration: "7s" }}
-        />
+    <div className="relative flex h-full min-h-dvh flex-col justify-center overflow-hidden bg-[#1B2A4A] px-12 py-16 text-white xl:px-20">
+      <div aria-hidden className="absolute -left-32 -top-32 h-[28rem] w-[28rem] rounded-full bg-[#C41E2A]/25 blur-[120px]" />
+      <div aria-hidden className="absolute -bottom-40 right-0 h-[26rem] w-[26rem] rounded-full bg-white/[0.06] blur-[100px]" />
 
-        {/* Central Morphing Glass Orb */}
-        <div
-          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[90%] max-w-[700px] aspect-square border border-white/[0.03] bg-white/[0.01] backdrop-blur-3xl shadow-[inset_0_0_80px_rgba(255,255,255,0.01)]"
-          style={{
-            borderRadius: "40% 60% 70% 30% / 40% 50% 60% 50%",
-            animation: "morph 15s ease-in-out infinite both alternate",
-          }}
-        />
-      </div>
+      <div className="relative max-w-lg">
+        <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[#FF8A8F]">Alayn for Suppliers</p>
+        <h2 className="mt-4 text-[clamp(2rem,3.2vw,2.75rem)] font-extrabold leading-[1.1] tracking-[-0.02em]">
+          Your restaurant orders, all in one place.
+        </h2>
 
-      {/* Content Layer */}
-      <div className="relative z-10 w-full max-w-xl mx-auto flex flex-col justify-center h-full pl-4 lg:pl-12">
-        <div className="mb-12 relative">
-          <div className="absolute -left-8 top-4 w-px h-24 bg-gradient-to-b from-[#C41E2A]/70 to-transparent hidden lg:block" />
-          <h2 className="font-serif text-5xl lg:text-[5.5rem] font-medium tracking-tight text-white/90 leading-[1.05] mb-10 drop-shadow-sm">
-            The AI Operating System for<br />
-            <span className="italic text-white/40">hospitality</span><br />
-          </h2>
-          <div className="h-px w-16 bg-white/20 mb-8" />
-          <p className="text-white/40 font-light text-lg tracking-wide max-w-md leading-relaxed">
-            Fulfill store orders, manage live price catalogs, and connect directly with leading restaurants on the Alayn network.
-          </p>
+        <ul className="mt-8 space-y-3.5">
+          {POINTS.map((p) => (
+            <li key={p} className="flex items-start gap-3 text-[15px] text-white/80">
+              <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-white/10">
+                <Check className="h-3 w-3" />
+              </span>
+              {p}
+            </li>
+          ))}
+        </ul>
+
+        {/* Illustrative order card */}
+        <div className="mt-12 rounded-2xl bg-white p-5 text-[#1B2A4A] shadow-2xl shadow-black/30" aria-hidden>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className="font-mono text-xs font-semibold">PO-1042</span>
+              <span className="rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-semibold text-amber-800 ring-1 ring-amber-200">
+                New
+              </span>
+            </div>
+            <span className="text-sm font-semibold tabular-nums">₹4,250</span>
+          </div>
+          <p className="mt-2 text-sm font-medium">Sea Breeze Café · Bandra</p>
+          <div className="mt-3 flex flex-wrap gap-1.5">
+            {["Paneer · 5 kg", "Curd · 10 kg", "Milk · 20 L"].map((i) => (
+              <span key={i} className="rounded-md bg-zinc-100 px-2 py-1 text-[11px] font-medium text-zinc-700">
+                {i}
+              </span>
+            ))}
+          </div>
+          <div className="mt-4 flex gap-2">
+            <span className="flex-1 rounded-lg bg-zinc-100 py-2 text-center text-xs font-semibold text-zinc-700">Start packing</span>
+            <span className="flex-1 rounded-lg bg-[#C41E2A] py-2 text-center text-xs font-semibold text-white">Dispatch</span>
+          </div>
         </div>
       </div>
-
-      {/* Global style for the morph animation */}
-      <style
-        dangerouslySetInnerHTML={{
-          __html: `
-        @keyframes morph {
-          0% { border-radius: 40% 60% 70% 30% / 40% 50% 60% 50%; }
-          34% { border-radius: 70% 30% 50% 50% / 30% 30% 70% 70%; }
-          67% { border-radius: 100% 60% 60% 100% / 100% 100% 60% 60%; }
-          100% { border-radius: 40% 60% 70% 30% / 40% 50% 60% 50%; }
-        }
-      `,
-        }}
-      />
     </div>
   );
 }
-

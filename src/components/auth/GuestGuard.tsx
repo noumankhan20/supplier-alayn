@@ -9,9 +9,13 @@ import AuthLoader from "./AuthLoader";
 
 interface GuestGuardProps {
   children: React.ReactNode;
+  /** Where to send a supplier once signed in, instead of ?next or the orders page (e.g. right after sign-up) */
+  redirectTo?: string;
+  /** Message on the loader shown while redirecting */
+  redirectMessage?: string;
 }
 
-export default function GuestGuard({ children }: GuestGuardProps) {
+export default function GuestGuard({ children, redirectTo, redirectMessage }: GuestGuardProps) {
   const router = useRouter();
   const dispatch = useAppDispatch();
 
@@ -27,13 +31,13 @@ export default function GuestGuard({ children }: GuestGuardProps) {
   useEffect(() => {
     // Only redirect if already authenticated AS A SUPPLIER
     if (status === "authenticated" && user?.role === "SUPPLIER") {
-      router.replace(safeNextPath(new URLSearchParams(window.location.search).get("next")));
+      router.replace(redirectTo ?? safeNextPath(new URLSearchParams(window.location.search).get("next")));
     }
-  }, [status, user, router]);
+  }, [status, user, router, redirectTo]);
 
-  // If authenticated as a supplier, hold while redirecting to orders
+  // If authenticated as a supplier, hold while redirecting
   if (status === "authenticated" && user?.role === "SUPPLIER") {
-    return <AuthLoader message="Taking you to your supplier dashboard..." />;
+    return <AuthLoader message={redirectMessage ?? "Opening your orders…"} />;
   }
 
   // Allow unauthenticated visitors or non-supplier sessions to view login/signup

@@ -1,34 +1,21 @@
 "use client";
 
 import React, { useState } from "react";
-import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import {
-  User,
-  Mail,
-  Phone,
-  Lock,
-  Truck,
-  MapPin,
-  Tag,
-  Eye,
-  EyeOff,
-  ArrowRight,
-  ArrowLeft,
-  CheckCircle2,
-} from "lucide-react";
+import { Eye, EyeOff, ArrowRight, ArrowLeft, Loader2, AlertCircle, Check } from "lucide-react";
 import { useRegisterSupplierMutation } from "@/redux/slices/authApiSlice";
 import { useAppDispatch, useAppSelector } from "@/redux/store/hooks";
 import { setCredentials, logout } from "@/redux/slices/authSlice";
-import { passwordProblem } from "@/lib/passwordPolicy";
-import { MAIN_APP_URL } from "@/lib/apiBase";
+import { passwordProblem, PASSWORD_HINT } from "@/lib/passwordPolicy";
 import { useShake } from "@/lib/useShake";
 import { useHydrated } from "@/lib/useHydrated";
 import { apiErrorMessage } from "@/lib/apiError";
+import { formatRole } from "@/lib/utils";
 import { userFromResponse } from "@/lib/authSession";
 import { writeUserHint } from "@/components/landing/landingSession";
-import AuthShowcase from "@/components/auth/AuthShowcase";
+import AuthShell from "@/components/auth/AuthShell";
+import AuthField, { authInputClass } from "@/components/auth/AuthField";
 import GuestGuard from "@/components/auth/GuestGuard";
 
 const SUPPLY_CATEGORIES = [
@@ -45,7 +32,21 @@ const SUPPLY_CATEGORIES = [
   "General Wholesale",
 ];
 
-function SignupFormContent() {
+type Field =
+  | "fullName"
+  | "email"
+  | "phone"
+  | "password"
+  | "confirmPassword"
+  | "supplierName"
+  | "supplierCategory"
+  | "supplierAddress"
+  | "supplierDeliveryTerms"
+  | "supplierGst";
+
+const STEPS = ["Your account", "Your business"] as const;
+
+function SignupFormContent({ onRegistered }: { onRegistered: () => void }) {
   const hydrated = useHydrated();
   const router = useRouter();
   const dispatch = useAppDispatch();
@@ -53,111 +54,80 @@ function SignupFormContent() {
   const currentStatus = useAppSelector((s) => s.auth.status);
   const [step, setStep] = useState<1 | 2>(1);
 
-  // Form State
-  const [formData, setFormData] = useState({
-    // Step 1: Account
+  const [formData, setFormData] = useState<Record<Field, string>>({
     fullName: "",
     email: "",
     phone: "",
     password: "",
     confirmPassword: "",
-    // Step 2: Business
     supplierName: "",
-    supplierCategory: "Dairy & Eggs",
+    supplierCategory: SUPPLY_CATEGORIES[0],
     supplierAddress: "",
     supplierDeliveryTerms: "",
     supplierGst: "",
   });
 
-  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const [fieldErrors, setFieldErrors] = useState<Partial<Record<Field, string>>>({});
   const [shakeKey, setShakeKey] = useState(0);
   const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [submitError, setSubmitError] = useState("");
   const [submitSuccess, setSubmitSuccess] = useState(false);
 
   const [registerSupplier, { isLoading }] = useRegisterSupplierMutation();
-
   const shakeRef = useShake<HTMLDivElement>(shakeKey);
 
-  const handleChange = (field: string) => (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
-  ) => {
-    setFormData((prev) => ({ ...prev, [field]: e.target.value }));
-    if (fieldErrors[field]) {
-      setFieldErrors((prev) => {
-        const next = { ...prev };
-        delete next[field];
-        return next;
-      });
+  const handleChange =
+    (field: Field) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+      setFormData((prev) => ({ ...prev, [field]: e.target.value }));
+      if (fieldErrors[field]) {
+        setFieldErrors((prev) => {
+          const next = { ...prev };
+          delete next[field];
+          return next;
+        });
+      }
+    };
+
+  const report = (errors: Partial<Record<Field, string>>) => {
+    setFieldErrors(errors);
+    const first = Object.keys(errors)[0];
+    if (first) {
+      setShakeKey((k) => k + 1);
+      document.getElementById(first)?.focus();
     }
+    return !first;
   };
 
-  const validateStep1 = (): boolean => {
-    const errors: Record<string, string> = {};
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    const phoneRegex = /^[0-9+\-\s()]{7,15}$/;
-
-    if (!formData.fullName.trim()) errors.fullName = "Full name is required.";
-    if (!formData.email.trim()) {
-      errors.email = "Email address is required.";
-    } else if (!emailRegex.test(formData.email)) {
-      errors.email = "Enter a valid email address.";
-    }
-
-    if (!formData.phone.trim()) {
-      errors.phone = "Phone number is required.";
-    } else if (!phoneRegex.test(formData.phone)) {
-      errors.phone = "Enter a valid phone number (at least 10 digits).";
-    }
-
-    const pwProb = passwordProblem(formData.password);
-    if (pwProb) {
-      errors.password = pwProb;
-    }
-
-    if (!formData.confirmPassword) {
-      errors.confirmPassword = "Please confirm your password.";
-    } else if (formData.confirmPassword !== formData.password) {
-      errors.confirmPassword = "Passwords do not match.";
-    }
-
-    setFieldErrors(errors);
-    if (Object.keys(errors).length > 0) setShakeKey((k) => k + 1);
-    return Object.keys(errors).length === 0;
+  const validateStep1 = () => {
+    const errors: Partial<Record<Field, string>> = {};
+    if (!formData.fullName.trim()) errors.fullName = "Enter your name.";
+    if (!formData.email.trim()) errors.email = "Enter your email address.";
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email.trim())) errors.email = "That email doesn’t look right.";
+    if (!formData.phone.trim()) errors.phone = "Enter a phone number for orders.";
+    else if (!/^[0-9+\-\s()]{7,15}$/.test(formData.phone.trim())) errors.phone = "Enter a valid phone number.";
+    const pw = passwordProblem(formData.password);
+    if (pw) errors.password = pw;
+    if (!formData.confirmPassword) errors.confirmPassword = "Type your password again.";
+    else if (formData.confirmPassword !== formData.password) errors.confirmPassword = "The passwords don’t match.";
+    return report(errors);
   };
 
-  const validateStep2 = (): boolean => {
-    const errors: Record<string, string> = {};
-
-    if (!formData.supplierName.trim()) {
-      errors.supplierName = "Supplier or Company name is required.";
-    }
-    if (!formData.supplierAddress.trim()) {
-      errors.supplierAddress = "Warehouse / Dispatch address is required.";
-    }
-    if (!formData.supplierCategory.trim()) {
-      errors.supplierCategory = "Supply category is required.";
-    }
-
-    setFieldErrors(errors);
-    if (Object.keys(errors).length > 0) setShakeKey((k) => k + 1);
-    return Object.keys(errors).length === 0;
+  const validateStep2 = () => {
+    const errors: Partial<Record<Field, string>> = {};
+    if (!formData.supplierName.trim()) errors.supplierName = "Enter your business name.";
+    if (!formData.supplierAddress.trim()) errors.supplierAddress = "Enter the address you dispatch from.";
+    return report(errors);
   };
 
   const handleNext = (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitError("");
-    if (validateStep1()) {
-      setStep(2);
-    }
+    if (validateStep1()) setStep(2);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitError("");
-    setSubmitSuccess(false);
-
     if (!validateStep2()) return;
 
     try {
@@ -178,501 +148,244 @@ function SignupFormContent() {
         },
       }).unwrap();
 
+      // New suppliers start by adding products: restaurants can only order what's listed.
+      // Tell the guard first, so it redirects to the catalog once the session is set.
+      onRegistered();
+      setSubmitSuccess(true);
       const user = userFromResponse(res);
       if (user) {
         dispatch(setCredentials({ user }));
         writeUserHint(user);
+      } else {
+        // No user in the response: the catalog page checks the session cookie itself
+        router.replace("/catalog?welcome=1");
       }
-
-      setSubmitSuccess(true);
-      setTimeout(() => {
-        router.replace("/orders");
-      }, 1200);
     } catch (err) {
-      setSubmitError(apiErrorMessage(err, "Failed to register supplier. Please try again."));
+      setSubmitError(apiErrorMessage(err, "We couldn’t create your account. Please try again."));
       setShakeKey((k) => k + 1);
     }
   };
 
-  const inputClasses =
-    "block w-full border-b border-[#1B2A4A]/20 py-2 pl-9 pr-3 text-[#1B2A4A] placeholder:text-[#6B7A90] bg-transparent transition-all duration-300 focus:border-[#C41E2A] focus:shadow-[0_4px_12px_rgba(196,30,42,0.08)] focus:outline-none focus:ring-0 text-xs sm:text-sm [&>option]:text-[#1B2A4A]";
-  const errorInputClasses =
-    "block w-full border-b border-[#C41E2A]/50 py-2 pl-9 pr-3 text-[#1B2A4A] placeholder:text-[#6B7A90] bg-transparent transition-all duration-300 focus:border-[#C41E2A] focus:shadow-[0_4px_12px_rgba(196,30,42,0.08)] focus:outline-none focus:ring-0 text-xs sm:text-sm [&>option]:text-[#1B2A4A]";
+  const input = (field: Field, props: React.InputHTMLAttributes<HTMLInputElement> & { extra?: string } = {}) => {
+    const { extra, ...rest } = props;
+    return function renderInput(describedBy: string | undefined) {
+      return (
+      <input
+        id={field}
+        name={field}
+        value={formData[field]}
+        onChange={handleChange(field)}
+        aria-invalid={!!fieldErrors[field] || undefined}
+        aria-describedby={describedBy}
+        className={authInputClass(!!fieldErrors[field], `h-12 ${extra ?? ""}`)}
+        {...rest}
+      />
+      );
+    };
+  };
 
   return (
-    <div className="relative flex flex-col lg:flex-row h-screen max-h-screen bg-white font-sans overflow-hidden">
-      {/* Back Button */}
-      <Link
-        href="/"
-        className="absolute top-4 left-4 z-50 flex items-center gap-1.5 text-[#1B2A4A]/60 hover:text-[#1B2A4A] bg-[#F4F5F8] hover:bg-[#E8ECF1] px-3 py-1.5 rounded-lg border border-[#1B2A4A]/10 transition-all duration-300 group shadow-2xs"
-      >
-        <ArrowLeft className="h-3.5 w-3.5 group-hover:-translate-x-0.5 transition-transform" />
-        <span className="text-xs font-bold">Back</span>
-      </Link>
+    <AuthShell
+      title={step === 1 ? "Join as a supplier" : "Tell restaurants who you are"}
+      subtitle={
+        step === 1
+          ? "Create your account in two short steps. You can add products straight after."
+          : "This is what restaurants see when they find you."
+      }
+      footer={
+        <>
+          Already have an account?{" "}
+          <Link href="/login" className="font-semibold text-[#C41E2A] hover:underline">
+            Sign in
+          </Link>
+        </>
+      }
+    >
+      {/* Progress */}
+      <ol className="mb-8 grid grid-cols-2 gap-2" aria-label="Sign-up progress">
+        {STEPS.map((label, i) => {
+          const n = i + 1;
+          const done = step > n || submitSuccess;
+          const current = step === n && !submitSuccess;
+          return (
+            <li key={label} aria-current={current ? "step" : undefined}>
+              <div className={`h-1 rounded-full ${done || current ? "bg-[#C41E2A]" : "bg-zinc-200"}`} />
+              <p className={`mt-2 flex items-center gap-1.5 text-[13px] font-medium ${current || done ? "text-[#1B2A4A]" : "text-zinc-400"}`}>
+                {done && <Check className="h-3.5 w-3.5 text-emerald-600" />}
+                Step {n} · {label}
+              </p>
+            </li>
+          );
+        })}
+      </ol>
 
-      {/* Left Pane: Form */}
-      <div className="flex-1 lg:flex-initial lg:w-[45%] xl:w-[40%] flex flex-col justify-between px-6 sm:px-10 py-6 lg:py-8 z-10 relative bg-white border-r border-[#1B2A4A]/10 overflow-y-auto no-scrollbar h-full">
-        <div className="w-full max-w-sm mx-auto relative z-10 my-auto">
-          {/* Logo */}
-          <div className="flex justify-center mb-6 pt-2">
-            <Link href="/">
-              <Image
-                src="/gptlogo.png"
-                alt="Alayn Suppliers"
-                sizes="360px"
-                width={1280}
-                height={297}
-                style={{
-                  height: "46px",
-                  width: "auto",
-                  transform: "scale(1.75)",
-                  transformOrigin: "center center",
-                }}
-                className="w-auto object-contain"
-                priority
-              />
-            </Link>
-          </div>
+      {currentStatus === "authenticated" && currentUser && currentUser.role !== "SUPPLIER" && (
+        <div className="mb-6 flex items-start justify-between gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+          <p>
+            You’re signed in to Alayn as <span className="font-semibold">{currentUser.name || currentUser.email}</span>{" "}
+            ({formatRole(currentUser.role)}). Sign out first to create a supplier account.
+          </p>
+          <button type="button" onClick={() => dispatch(logout())} className="shrink-0 font-semibold underline underline-offset-2">
+            Sign out
+          </button>
+        </div>
+      )}
 
-          <div className="text-center lg:text-left mb-4">
-            <div className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-bold text-emerald-800 border border-emerald-200 mb-2">
-              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
-              Vendor Partner Onboarding
-            </div>
-            <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-[#1B2A4A] font-serif">
-              Join as a supplier
-            </h2>
-            <p className="mt-1 text-xs text-[#6B7A90] font-medium leading-normal">
-              Register your business to receive purchase orders from leading restaurants on Alayn.
-            </p>
-          </div>
+      {submitError && (
+        <div role="alert" className="mb-6 flex gap-3 rounded-xl border border-[#C41E2A]/20 bg-[#C41E2A]/[0.06] p-4 text-sm text-[#9B131E]">
+          <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+          <p>{submitError}</p>
+        </div>
+      )}
 
-          {/* 2-Step Progress Indicator */}
-          <div className="mb-5 flex items-center justify-between gap-2 border-b border-[#1B2A4A]/10 pb-3">
-            <div className="flex items-center gap-2">
-              <div
-                className={`h-6 w-6 rounded-full flex items-center justify-center text-xs font-bold ${
-                  step === 1 ? "bg-[#C41E2A] text-white" : "bg-emerald-500 text-white"
-                }`}
-              >
-                {step === 1 ? "1" : "✓"}
-              </div>
-              <span className="text-xs font-bold text-[#1B2A4A]">Account</span>
-            </div>
-            <div className="h-px flex-1 bg-[#1B2A4A]/10 mx-2" />
-            <div className="flex items-center gap-2">
-              <div
-                className={`h-6 w-6 rounded-full flex items-center justify-center text-xs font-bold ${
-                  step === 2 ? "bg-[#C41E2A] text-white" : "bg-zinc-200 text-zinc-600"
-                }`}
-              >
-                2
-              </div>
-              <span
-                className={`text-xs font-bold ${
-                  step === 2 ? "text-[#1B2A4A]" : "text-zinc-400"
-                }`}
-              >
-                Company Details
-              </span>
-            </div>
-          </div>
+      {submitSuccess && (
+        <div role="status" className="mb-6 flex items-center gap-3 rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm font-medium text-emerald-800">
+          <Check className="h-4 w-4 shrink-0" />
+          Account created. Taking you to your catalog…
+        </div>
+      )}
 
-          {currentStatus === "authenticated" && currentUser && currentUser.role !== "SUPPLIER" && (
-            <div className="mb-4 rounded-xl bg-amber-50 p-3.5 border border-amber-200 text-xs text-amber-900 flex items-start justify-between gap-2">
-              <div>
-                <p className="font-bold">Active Restaurant Session</p>
-                <p className="text-[11px] text-amber-700 mt-0.5">
-                  Signed in as {currentUser.name || currentUser.email} ({currentUser.role?.replace(/_/g, " ")})
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => dispatch(logout())}
-                className="shrink-0 text-xs font-bold text-amber-900 underline hover:text-amber-950"
-              >
-                Sign Out
-              </button>
-            </div>
-          )}
-
-          {submitError && (
-            <div className="mb-4 rounded-xl bg-[#C41E2A]/10 p-3.5 text-xs text-[#C41E2A] border border-[#C41E2A]/20 font-medium">
-              {submitError}
-            </div>
-          )}
-
-          {submitSuccess && (
-            <div className="mb-4 rounded-xl bg-emerald-50 p-3.5 text-xs text-emerald-800 border border-emerald-200 font-bold flex items-center gap-2">
-              <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
-              Account created successfully! Redirecting to your dashboard...
-            </div>
-          )}
-
-          <div ref={shakeRef} className="t-input">
-            {step === 1 ? (
-              /* STEP 1: Account Credentials */
-              <form onSubmit={handleNext} className="space-y-3.5">
-                {/* Full Name */}
-                <div>
-                  <label
-                    htmlFor="fullName"
-                    className="block text-[10px] font-bold uppercase tracking-wider text-[#6B7A90] mb-1"
-                  >
-                    Primary Contact Name
-                  </label>
-                  <div className="relative mt-1 group">
-                    <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-1">
-                      <User className="h-4 w-4 text-[#1B2A4A]/40 group-focus-within:text-[#1B2A4A] transition-colors" />
-                    </div>
-                    <input
-                      id="fullName"
-                      type="text"
-                      required
-                      value={formData.fullName}
-                      onChange={handleChange("fullName")}
-                      placeholder="Aquib Hingwala"
-                      className={fieldErrors.fullName ? errorInputClasses : inputClasses}
-                    />
-                  </div>
-                  {fieldErrors.fullName && (
-                    <p className="mt-1 text-xs font-medium text-[#C41E2A]">{fieldErrors.fullName}</p>
-                  )}
-                </div>
-
-                {/* Email Address */}
-                <div>
-                  <label
-                    htmlFor="email"
-                    className="block text-[10px] font-bold uppercase tracking-wider text-[#6B7A90] mb-1"
-                  >
-                    Vendor Email Address
-                  </label>
-                  <div className="relative mt-1 group">
-                    <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-1">
-                      <Mail className="h-4 w-4 text-[#1B2A4A]/40 group-focus-within:text-[#1B2A4A] transition-colors" />
-                    </div>
-                    <input
-                      id="email"
-                      type="email"
-                      required
-                      value={formData.email}
-                      onChange={handleChange("email")}
-                      placeholder="orders@supplier.com"
-                      className={fieldErrors.email ? errorInputClasses : inputClasses}
-                    />
-                  </div>
-                  {fieldErrors.email && (
-                    <p className="mt-1 text-xs font-medium text-[#C41E2A]">{fieldErrors.email}</p>
-                  )}
-                </div>
-
-                {/* Phone Number */}
-                <div>
-                  <label
-                    htmlFor="phone"
-                    className="block text-[10px] font-bold uppercase tracking-wider text-[#6B7A90] mb-1"
-                  >
-                    Dispatch / Order Phone
-                  </label>
-                  <div className="relative mt-1 group">
-                    <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-1">
-                      <Phone className="h-4 w-4 text-[#1B2A4A]/40 group-focus-within:text-[#1B2A4A] transition-colors" />
-                    </div>
-                    <input
-                      id="phone"
-                      type="tel"
-                      required
-                      value={formData.phone}
-                      onChange={handleChange("phone")}
-                      placeholder="+91 98765 43210"
-                      className={fieldErrors.phone ? errorInputClasses : inputClasses}
-                    />
-                  </div>
-                  {fieldErrors.phone && (
-                    <p className="mt-1 text-xs font-medium text-[#C41E2A]">{fieldErrors.phone}</p>
-                  )}
-                </div>
-
-                {/* Password */}
-                <div>
-                  <label
-                    htmlFor="password"
-                    className="block text-[10px] font-bold uppercase tracking-wider text-[#6B7A90] mb-1"
-                  >
-                    Password
-                  </label>
-                  <div className="relative mt-1 group">
-                    <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-1">
-                      <Lock className="h-4 w-4 text-[#1B2A4A]/40 group-focus-within:text-[#1B2A4A] transition-colors" />
-                    </div>
-                    <input
-                      id="password"
-                      type={showPassword ? "text" : "password"}
-                      required
-                      value={formData.password}
-                      onChange={handleChange("password")}
-                      placeholder="At least 8 characters"
-                      className={(fieldErrors.password ? errorInputClasses : inputClasses).replace("pr-3", "pr-8")}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute inset-y-0 right-0 flex items-center pr-2 text-[#1B2A4A]/40 hover:text-[#1B2A4A]"
-                    >
-                      {showPassword ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
-                    </button>
-                  </div>
-                  {fieldErrors.password && (
-                    <p className="mt-1 text-xs font-medium text-[#C41E2A]">{fieldErrors.password}</p>
-                  )}
-                </div>
-
-                {/* Confirm Password */}
-                <div>
-                  <label
-                    htmlFor="confirmPassword"
-                    className="block text-[10px] font-bold uppercase tracking-wider text-[#6B7A90] mb-1"
-                  >
-                    Confirm Password
-                  </label>
-                  <div className="relative mt-1 group">
-                    <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-1">
-                      <Lock className="h-4 w-4 text-[#1B2A4A]/40 group-focus-within:text-[#1B2A4A] transition-colors" />
-                    </div>
-                    <input
-                      id="confirmPassword"
-                      type={showConfirmPassword ? "text" : "password"}
-                      required
-                      value={formData.confirmPassword}
-                      onChange={handleChange("confirmPassword")}
-                      placeholder="••••••••"
-                      className={(fieldErrors.confirmPassword ? errorInputClasses : inputClasses).replace("pr-3", "pr-8")}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                      className="absolute inset-y-0 right-0 flex items-center pr-2 text-[#1B2A4A]/40 hover:text-[#1B2A4A]"
-                    >
-                      {showConfirmPassword ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
-                    </button>
-                  </div>
-                  {fieldErrors.confirmPassword && (
-                    <p className="mt-1 text-xs font-medium text-[#C41E2A]">{fieldErrors.confirmPassword}</p>
-                  )}
-                </div>
-
-                <div className="pt-2">
-                  <button
-                    type="submit"
-                    className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#C41E2A] px-4 py-2.5 sm:py-3 text-xs sm:text-sm font-bold text-white shadow-xs hover:bg-[#b01e23] transition-all duration-300 hover:-translate-y-[1px] cursor-pointer"
-                  >
-                    Continue to Business Profile
-                    <ArrowRight className="h-3.5 w-3.5" />
-                  </button>
-                </div>
-              </form>
-            ) : (
-              /* STEP 2: Supplier Business Profile */
-              <form onSubmit={handleSubmit} className="space-y-3.5">
-                {/* Company Name */}
-                <div>
-                  <label
-                    htmlFor="supplierName"
-                    className="block text-[10px] font-bold uppercase tracking-wider text-[#6B7A90] mb-1"
-                  >
-                    Supplier / Company Name
-                  </label>
-                  <div className="relative mt-1 group">
-                    <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-1">
-                      <Truck className="h-4 w-4 text-[#1B2A4A]/40 group-focus-within:text-[#1B2A4A] transition-colors" />
-                    </div>
-                    <input
-                      id="supplierName"
-                      type="text"
-                      required
-                      value={formData.supplierName}
-                      onChange={handleChange("supplierName")}
-                      placeholder="e.g. Fresh Dairy Wholesale Ltd."
-                      className={fieldErrors.supplierName ? errorInputClasses : inputClasses}
-                    />
-                  </div>
-                  {fieldErrors.supplierName && (
-                    <p className="mt-1 text-xs font-medium text-[#C41E2A]">{fieldErrors.supplierName}</p>
-                  )}
-                </div>
-
-                {/* Supply Category */}
-                <div>
-                  <label
-                    htmlFor="supplierCategory"
-                    className="block text-[10px] font-bold uppercase tracking-wider text-[#6B7A90] mb-1"
-                  >
-                    Primary Supply Category
-                  </label>
-                  <div className="relative mt-1 group">
-                    <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-1">
-                      <Tag className="h-4 w-4 text-[#1B2A4A]/40 group-focus-within:text-[#1B2A4A] transition-colors" />
-                    </div>
-                    <select
-                      id="supplierCategory"
-                      value={formData.supplierCategory}
-                      onChange={handleChange("supplierCategory")}
-                      className={inputClasses}
-                    >
-                      {SUPPLY_CATEGORIES.map((cat) => (
-                        <option key={cat} value={cat}>
-                          {cat}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-
-                {/* Warehouse Address */}
-                <div>
-                  <label
-                    htmlFor="supplierAddress"
-                    className="block text-[10px] font-bold uppercase tracking-wider text-[#6B7A90] mb-1"
-                  >
-                    Warehouse / Dispatch Address
-                  </label>
-                  <div className="relative mt-1 group">
-                    <div className="pointer-events-none absolute inset-y-0 left-0 flex items-start pt-2 pl-1">
-                      <MapPin className="h-4 w-4 text-[#1B2A4A]/40 group-focus-within:text-[#1B2A4A] transition-colors" />
-                    </div>
-                    <textarea
-                      id="supplierAddress"
-                      rows={2}
-                      required
-                      value={formData.supplierAddress}
-                      onChange={handleChange("supplierAddress")}
-                      placeholder="Full facility or depot address, City, State, PIN"
-                      className={fieldErrors.supplierAddress ? errorInputClasses : inputClasses}
-                    />
-                  </div>
-                  {fieldErrors.supplierAddress && (
-                    <p className="mt-1 text-xs font-medium text-[#C41E2A]">{fieldErrors.supplierAddress}</p>
-                  )}
-                </div>
-
-                {/* Delivery Terms */}
-                <div>
-                  <label
-                    htmlFor="supplierDeliveryTerms"
-                    className="block text-[10px] font-bold uppercase tracking-wider text-[#6B7A90] mb-1"
-                  >
-                    Delivery &amp; Payment Terms (Optional)
-                  </label>
-                  <div className="relative mt-1 group">
-                    <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-1">
-                      <Tag className="h-4 w-4 text-[#1B2A4A]/40 group-focus-within:text-[#1B2A4A] transition-colors" />
-                    </div>
-                    <input
-                      id="supplierDeliveryTerms"
-                      type="text"
-                      value={formData.supplierDeliveryTerms}
-                      onChange={handleChange("supplierDeliveryTerms")}
-                      placeholder="e.g. Next day before 9 AM, Net 15 days"
-                      className={inputClasses}
-                    />
-                  </div>
-                </div>
-
-                {/* GST Number */}
-                <div>
-                  <label
-                    htmlFor="supplierGst"
-                    className="block text-[10px] font-bold uppercase tracking-wider text-[#6B7A90] mb-1"
-                  >
-                    GSTIN / Tax ID (Optional)
-                  </label>
-                  <div className="relative mt-1 group">
-                    <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-1">
-                      <Tag className="h-4 w-4 text-[#1B2A4A]/40 group-focus-within:text-[#1B2A4A] transition-colors" />
-                    </div>
-                    <input
-                      id="supplierGst"
-                      type="text"
-                      value={formData.supplierGst}
-                      onChange={handleChange("supplierGst")}
-                      placeholder="e.g. 27AAACA1234A1Z5"
-                      className={inputClasses}
-                    />
-                  </div>
-                </div>
-
-                <div className="pt-2 flex items-center gap-3">
+      <div ref={shakeRef} className="t-input">
+        {step === 1 ? (
+          <form onSubmit={handleNext} className="space-y-5" noValidate>
+            <AuthField id="fullName" label="Your name" error={fieldErrors.fullName}>
+              {input("fullName", { type: "text", autoComplete: "name", placeholder: "Full name", autoFocus: true })}
+            </AuthField>
+            <AuthField id="email" label="Email" error={fieldErrors.email} hint="You’ll use this to sign in.">
+              {input("email", { type: "email", autoComplete: "email", inputMode: "email", placeholder: "orders@yourbusiness.com" })}
+            </AuthField>
+            <AuthField id="phone" label="Phone for orders" error={fieldErrors.phone}>
+              {input("phone", { type: "tel", autoComplete: "tel", inputMode: "tel", placeholder: "+91 98765 43210" })}
+            </AuthField>
+            <AuthField id="password" label="Password" error={fieldErrors.password} hint={PASSWORD_HINT}>
+              {(describedBy) => (
+                <div className="relative">
+                  {input("password", {
+                    type: showPassword ? "text" : "password",
+                    autoComplete: "new-password",
+                    extra: "pr-12",
+                  })(describedBy)}
                   <button
                     type="button"
-                    onClick={() => setStep(1)}
-                    className="flex-1 rounded-xl border border-zinc-300 py-2.5 sm:py-3 text-xs font-bold text-zinc-700 hover:bg-zinc-50 transition"
+                    onClick={() => setShowPassword((s) => !s)}
+                    className="absolute inset-y-0 right-0 flex w-12 items-center justify-center text-zinc-400 hover:text-[#1B2A4A]"
+                    aria-label={showPassword ? "Hide password" : "Show password"}
                   >
-                    ← Back
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={isLoading || !hydrated}
-                    className="flex-2 flex items-center justify-center gap-2 rounded-xl bg-[#C41E2A] py-2.5 sm:py-3 text-xs sm:text-sm font-bold text-white shadow-xs hover:bg-[#b01e23] disabled:opacity-50 transition"
-                  >
-                    {isLoading ? (
-                      <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
-                    ) : (
-                      <>
-                        Complete Registration
-                        <ArrowRight className="h-3.5 w-3.5" />
-                      </>
-                    )}
+                    {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                   </button>
                 </div>
-              </form>
-            )}
-          </div>
+              )}
+            </AuthField>
+            <AuthField id="confirmPassword" label="Confirm password" error={fieldErrors.confirmPassword}>
+              {input("confirmPassword", { type: showPassword ? "text" : "password", autoComplete: "new-password" })}
+            </AuthField>
 
-          <div className="mt-5 pt-4 border-t border-[#1B2A4A]/10 flex flex-col sm:flex-row items-center justify-between text-xs text-[#6B7A90] font-medium gap-2">
-            <p>
-              Already a supplier?{" "}
-              <Link href="/login" className="font-semibold text-[#C41E2A] hover:text-[#b01e23] transition-colors">
-                Sign In
-              </Link>
-            </p>
-            <a
-              href={MAIN_APP_URL}
-              target="_blank"
-              rel="noreferrer"
-              className="text-xs font-bold text-zinc-800 hover:text-[#C41E2A] transition-colors flex items-center gap-1"
+            <button
+              type="submit"
+              className="flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-[#C41E2A] px-4 text-[15px] font-semibold text-white transition-colors hover:bg-[#A81822] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#C41E2A]/25"
             >
-              Restaurant Portal ↗
-            </a>
-          </div>
-        </div>
+              Continue
+              <ArrowRight className="h-4 w-4" />
+            </button>
+          </form>
+        ) : (
+          <form onSubmit={handleSubmit} className="space-y-5" noValidate>
+            <AuthField id="supplierName" label="Business name" error={fieldErrors.supplierName}>
+              {input("supplierName", { type: "text", autoComplete: "organization", placeholder: "e.g. Fresh Dairy Wholesale", autoFocus: true })}
+            </AuthField>
 
-        {/* Footer */}
-        <div className="w-full max-w-sm mx-auto mt-8 flex flex-col sm:flex-row items-center justify-between gap-2 text-[10px] text-[#6B7A90] font-medium border-t border-[#1B2A4A]/10 pt-4">
-          <span>© 2026 Alayn AI. All rights reserved.</span>
-          <div className="flex gap-3">
-            <a href={`${MAIN_APP_URL}/legal/privacy`} className="hover:text-[#1B2A4A] transition-colors">
-              Privacy
-            </a>
-            <a href={`${MAIN_APP_URL}/legal/terms`} className="hover:text-[#1B2A4A] transition-colors">
-              Terms
-            </a>
-          </div>
-        </div>
-      </div>
+            <AuthField id="supplierCategory" label="What do you mainly supply?">
+              {(describedBy) => (
+                <select
+                  id="supplierCategory"
+                  value={formData.supplierCategory}
+                  onChange={handleChange("supplierCategory")}
+                  aria-describedby={describedBy}
+                  className={authInputClass(false, "h-12 pr-10")}
+                >
+                  {SUPPLY_CATEGORIES.map((cat) => (
+                    <option key={cat} value={cat}>
+                      {cat}
+                    </option>
+                  ))}
+                </select>
+              )}
+            </AuthField>
 
-      {/* Right Pane: Interactive Showcase */}
-      <div className="hidden lg:block lg:flex-1 relative">
-        <AuthShowcase />
+            <AuthField
+              id="supplierAddress"
+              label="Dispatch address"
+              error={fieldErrors.supplierAddress}
+              hint="Where your deliveries leave from: street, city and PIN."
+            >
+              {(describedBy) => (
+                <textarea
+                  id="supplierAddress"
+                  rows={3}
+                  value={formData.supplierAddress}
+                  onChange={handleChange("supplierAddress")}
+                  autoComplete="street-address"
+                  aria-invalid={!!fieldErrors.supplierAddress || undefined}
+                  aria-describedby={describedBy}
+                  className={authInputClass(!!fieldErrors.supplierAddress, "py-3 resize-none")}
+                />
+              )}
+            </AuthField>
+
+            <AuthField id="supplierDeliveryTerms" label="Delivery & payment terms" optional hint="Shown to restaurants, e.g. “Next day before 9 AM · Pay in 15 days”.">
+              {input("supplierDeliveryTerms", { type: "text" })}
+            </AuthField>
+
+            <AuthField id="supplierGst" label="GSTIN" optional>
+              {input("supplierGst", { type: "text", placeholder: "27AAACA1234A1Z5", extra: "uppercase", autoCapitalize: "characters" })}
+            </AuthField>
+
+            <div className="flex gap-3 pt-1">
+              <button
+                type="button"
+                onClick={() => {
+                  setFieldErrors({});
+                  setStep(1);
+                }}
+                className="inline-flex h-12 items-center justify-center gap-2 rounded-xl border border-zinc-300 px-5 text-[15px] font-semibold text-[#1B2A4A] transition-colors hover:bg-zinc-50"
+              >
+                <ArrowLeft className="h-4 w-4" />
+                Back
+              </button>
+              <button
+                type="submit"
+                disabled={isLoading || !hydrated || submitSuccess}
+                className="flex h-12 flex-1 items-center justify-center gap-2 rounded-xl bg-[#C41E2A] px-4 text-[15px] font-semibold text-white transition-colors hover:bg-[#A81822] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#C41E2A]/25 disabled:opacity-60"
+              >
+                {isLoading ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Creating account…
+                  </>
+                ) : (
+                  <>
+                    Create account
+                    <ArrowRight className="h-4 w-4" />
+                  </>
+                )}
+              </button>
+            </div>
+          </form>
+        )}
       </div>
-    </div>
+    </AuthShell>
   );
 }
 
 export default function SupplierSignupPage() {
+  // Set once the account exists, so the guard sends the new supplier to the catalog instead of orders
+  const [registered, setRegistered] = useState(false);
   return (
-    <GuestGuard>
-      <SignupFormContent />
+    <GuestGuard
+      redirectTo={registered ? "/catalog?welcome=1" : undefined}
+      redirectMessage={registered ? "Account created. Opening your catalog…" : undefined}
+    >
+      <SignupFormContent onRegistered={() => setRegistered(true)} />
     </GuestGuard>
   );
 }
