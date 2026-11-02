@@ -42,9 +42,9 @@ export function earnedOnOrder(po: PurchaseOrderApi): number {
   return Math.round(received);
 }
 
-export function computeSupplierStats(orders: PurchaseOrderApi[], now: Date = new Date()): SupplierStats {
+export function computeSupplierStats(orders: PurchaseOrderApi[], now?: Date | null): SupplierStats {
   const real = orders.filter((po) => po.status !== "DRAFT");
-  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
+  const monthStart = now ? new Date(now.getFullYear(), now.getMonth(), 1).getTime() : null;
 
   let earnedPaise = 0;
   let earnedThisMonthPaise = 0;
@@ -62,7 +62,7 @@ export function computeSupplierStats(orders: PurchaseOrderApi[], now: Date = new
       deliveredOrders++;
       earnedPaise += earned;
       const doneAt = po.closedAt || po.updatedAt || po.createdAt;
-      if (doneAt && new Date(doneAt).getTime() >= monthStart) earnedThisMonthPaise += earned;
+      if (doneAt && monthStart !== null && new Date(doneAt).getTime() >= monthStart) earnedThisMonthPaise += earned;
     } else if (IN_PROGRESS.has(po.status)) {
       inProgressOrders++;
       inProgressPaise += po.totalAmountPaise;

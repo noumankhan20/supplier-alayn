@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState, Suspense } from "react";
 import Link from "next/link";
 import { Building2, User, Lock, Pencil, Loader2, Eye, EyeOff, TrendingUp, ArrowRight } from "lucide-react";
 import Skeleton from "react-loading-skeleton";
@@ -239,7 +239,7 @@ function PasswordInput({
   );
 }
 
-export default function SupplierProfilePage() {
+function SupplierProfilePage() {
   const toast = useToast();
   const dispatch = useAppDispatch();
   const user = useAppSelector((state) => state.auth.user);
@@ -249,7 +249,11 @@ export default function SupplierProfilePage() {
   const [updateAccount, { isLoading: savingAccount }] = useUpdateProfileMutation();
   const [changePassword, { isLoading: changingPw }] = useChangePasswordMutation();
   const { data: orders, isLoading: ordersLoading, isError: ordersError } = useGetSupplierPortalOrdersQuery();
-  const stats = useMemo(() => computeSupplierStats(orders ?? []), [orders]);
+  const [mountedNow, setMountedNow] = useState<Date | null>(null);
+  useEffect(() => {
+    setMountedNow(new Date());
+  }, []);
+  const stats = useMemo(() => computeSupplierStats(orders ?? [], mountedNow), [orders, mountedNow]);
 
   // ---------- Business ----------
   const [editingBusiness, setEditingBusiness] = useState(false);
@@ -637,5 +641,13 @@ export default function SupplierProfilePage() {
         </div>
       </div>
     </SupplierLayout>
+  );
+}
+
+export default function SupplierProfilePageWrapper() {
+  return (
+    <Suspense fallback={null}>
+      <SupplierProfilePage />
+    </Suspense>
   );
 }
