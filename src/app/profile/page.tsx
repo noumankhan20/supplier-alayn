@@ -1,7 +1,8 @@
 "use client";
 
-import React, { useState } from "react";
-import { Building2, User, Lock, Pencil, Loader2, Eye, EyeOff } from "lucide-react";
+import React, { useMemo, useState } from "react";
+import Link from "next/link";
+import { Building2, User, Lock, Pencil, Loader2, Eye, EyeOff, TrendingUp, ArrowRight } from "lucide-react";
 import Skeleton from "react-loading-skeleton";
 import "react-loading-skeleton/dist/skeleton.css";
 import SupplierLayout, { PageHeader } from "@/components/layout/SupplierLayout";
@@ -12,9 +13,12 @@ import { useAppDispatch, useAppSelector } from "@/redux/store/hooks";
 import { setCredentials } from "@/redux/slices/authSlice";
 import { useUpdateProfileMutation, useChangePasswordMutation } from "@/redux/slices/authApiSlice";
 import { useGetMyProfileQuery, useUpdateMyProfileMutation, SupplierProfileApi } from "@/redux/slices/supplierApiSlice";
+import { useGetSupplierPortalOrdersQuery } from "@/redux/slices/procurementApiSlice";
 import { passwordProblem, PASSWORD_HINT } from "@/lib/passwordPolicy";
 import { apiErrorMessage } from "@/lib/apiError";
-import { cn } from "@/lib/utils";
+import { computeSupplierStats, type SupplierStats } from "@/lib/supplierStats";
+import { formatDate } from "@/lib/orderStatus";
+import { cn, formatPrice } from "@/lib/utils";
 
 const SUPPLY_CATEGORIES = [
   "Dairy & Eggs",
@@ -103,6 +107,102 @@ function ReadRow({ label, value, mono }: { label: string; value?: string | null;
   );
 }
 
+function StatTile({ label, value, note }: { label: string; value: string; note?: string }) {
+  return (
+    <div className="rounded-xl bg-zinc-50 px-4 py-3.5 ring-1 ring-zinc-100">
+      <dt className="text-xs text-zinc-500">{label}</dt>
+      <dd className="mt-1 text-xl font-semibold tabular-nums text-[#1B2A4A]">{value}</dd>
+      {note && <p className="mt-0.5 text-xs text-zinc-500">{note}</p>}
+    </div>
+  );
+}
+
+/** Orders and earnings from Alayn restaurants, so suppliers can check the numbers themselves. */
+function AlaynActivity({ stats, loading, error }: { stats: SupplierStats; loading: boolean; error: boolean }) {
+  if (loading) {
+    return (
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        {[1, 2, 3, 4].map((i) => (
+          <Skeleton key={i} height={84} borderRadius={12} />
+        ))}
+      </div>
+    );
+  }
+
+  if (error) {
+    return <p className="text-sm text-zinc-500">Couldn’t load your order history right now. Refresh the page to try again.</p>;
+  }
+
+  if (stats.totalOrders === 0) {
+    return (
+      <p className="text-sm text-zinc-500">
+        No orders yet. When a restaurant on Alayn orders from you, your totals will show up here.
+      </p>
+    );
+  }
+
+  const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
+
+  return (
+    <div className="space-y-5">
+      <dl className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <StatTile
+          label="Orders from Alayn"
+          value={stats.totalOrders.toLocaleString("en-IN")}
+          note={stats.firstOrderAt ? `Since ${formatDate(stats.firstOrderAt)}` : undefined}
+        />
+        <StatTile
+          label="Total earned"
+          value={`₹${formatPrice(stats.earnedPaise)}`}
+          note={`From ${plural(stats.deliveredOrders, "delivered order")}`}
+        />
+        <StatTile label="Earned this month" value={`₹${formatPrice(stats.earnedThisMonthPaise)}`} />
+        <StatTile
+          label="Open orders"
+          value={`₹${formatPrice(stats.inProgressPaise)}`}
+          note={`${plural(stats.inProgressOrders, "order")} not delivered yet`}
+        />
+      </dl>
+
+      <div className="flex flex-wrap gap-x-6 gap-y-1 text-sm text-zinc-600">
+        {stats.fulfilmentRate !== null && (
+          <span>
+            <span className="font-semibold tabular-nums text-[#1B2A4A]">{stats.fulfilmentRate}%</span> of finished orders delivered
+          </span>
+        )}
+        {stats.notFulfilledOrders > 0 && (
+          <span>
+            <span className="font-semibold tabular-nums text-[#1B2A4A]">{stats.notFulfilledOrders}</span> cancelled or couldn’t fulfil
+          </span>
+        )}
+      </div>
+
+      {stats.topRestaurants.length > 0 && (
+        <div>
+          <h3 className="text-xs font-medium text-zinc-500">Restaurants that order from you most</h3>
+          <ul className="mt-2 divide-y divide-zinc-100 rounded-xl ring-1 ring-zinc-100">
+            {stats.topRestaurants.map((r) => (
+              <li key={r.id} className="flex items-center justify-between gap-4 px-4 py-2.5 text-sm">
+                <span className="truncate text-[#1B2A4A]">{r.name}</span>
+                <span className="shrink-0 tabular-nums text-zinc-600">
+                  {plural(r.orders, "order")} · <span className="font-medium text-[#1B2A4A]">₹{formatPrice(r.earnedPaise)}</span>
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      <div className="flex flex-col gap-2 border-t border-zinc-100 pt-4 text-xs text-zinc-500 sm:flex-row sm:items-center sm:justify-between">
+        <p>Earnings count goods the restaurant marked as received, at the price on the order.</p>
+        <Link href="/orders" className="inline-flex items-center gap-1 font-medium text-[#1B2A4A] hover:underline">
+          See all orders <ArrowRight className="h-3.5 w-3.5" />
+        </Link>
+      </div>
+    </div>
+  );
+}
+
 function PasswordInput({
   id,
   value,
@@ -148,6 +248,8 @@ export default function SupplierProfilePage() {
   const [updateBusiness, { isLoading: savingBusiness }] = useUpdateMyProfileMutation();
   const [updateAccount, { isLoading: savingAccount }] = useUpdateProfileMutation();
   const [changePassword, { isLoading: changingPw }] = useChangePasswordMutation();
+  const { data: orders, isLoading: ordersLoading, isError: ordersError } = useGetSupplierPortalOrdersQuery();
+  const stats = useMemo(() => computeSupplierStats(orders ?? []), [orders]);
 
   // ---------- Business ----------
   const [editingBusiness, setEditingBusiness] = useState(false);
@@ -256,9 +358,18 @@ export default function SupplierProfilePage() {
   return (
     <SupplierLayout>
       <div className="mx-auto max-w-3xl">
-        <PageHeader title="Business profile" description="What restaurants see about you, and your sign-in details." />
+        <PageHeader title="Business profile" description="Your orders and earnings on Alayn, what restaurants see about you, and your sign-in details." />
 
         <div className="space-y-5">
+          {/* Orders & earnings from Alayn */}
+          <Section
+            icon={TrendingUp}
+            title="Your business with Alayn"
+            description="Every order Alayn restaurants have placed with you, and what you’ve earned."
+          >
+            <AlaynActivity stats={stats} loading={ordersLoading} error={ordersError} />
+          </Section>
+
           {/* Business */}
           <Section
             icon={Building2}

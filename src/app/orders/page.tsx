@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useState, useEffect, Suspense } from "react";
 import Link from "next/link";
 import {
   Search,
@@ -75,13 +75,23 @@ function itemsSummary(po: PurchaseOrderApi, max = 3) {
   return parts.join(" · ") + (more > 0 ? ` · +${more} more` : "");
 }
 
-export default function SupplierOrdersPage() {
+function SupplierOrdersPage() {
   const toast = useToast();
   const user = useAppSelector((state) => state.auth.user);
   const { data: orders = [], isLoading, isError, refetch } = useGetSupplierPortalOrdersQuery(undefined, {
     pollingInterval: 60_000,
   });
   const [updateStatus, { isLoading: isUpdating }] = useUpdateSupplierPOStatusMutation();
+
+  const [now, setNow] = useState<number | null>(null);
+  const [todayMinDate, setTodayMinDate] = useState("");
+
+  useEffect(() => {
+    setNow(Date.now());
+    setTodayMinDate(new Date().toISOString().split("T")[0]);
+    const timer = setInterval(() => setNow(Date.now()), 60_000);
+    return () => clearInterval(timer);
+  }, []);
 
   const [search, setSearch] = useState("");
   const [tab, setTab] = useState<OrderTab>("TODO");
@@ -371,10 +381,10 @@ export default function SupplierOrdersPage() {
                     className="min-w-0 flex-1 text-left"
                     aria-label={`Open ${formatOrderNo(po)} from ${restaurantName(po)}`}
                   >
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
                       <StatusPill status={po.status} />
                       <span className="font-mono text-xs text-zinc-500">{formatOrderNo(po)}</span>
-                      <span className="text-xs text-zinc-400">· {timeAgo(po.createdAt)}</span>
+                      <span className="text-xs text-zinc-400">· {timeAgo(po.createdAt, now)}</span>
                     </div>
                     <p className="mt-1.5 truncate text-base font-semibold text-[#1B2A4A]">
                       {restaurantName(po)}
@@ -621,7 +631,7 @@ export default function SupplierOrdersPage() {
                   id="next-delivery"
                   type="date"
                   value={nextDate}
-                  min={new Date().toISOString().split("T")[0]}
+                  min={todayMinDate || undefined}
                   onChange={(e) => setNextDate(e.target.value)}
                   className={inputClass(!!formError && !nextDate, "mt-3 h-11 sm:w-56")}
                 />
@@ -691,5 +701,14 @@ export default function SupplierOrdersPage() {
         </div>
       </Modal>
     </SupplierLayout>
+  );
+}
+
+
+export default function SupplierOrdersPageWrapper() {
+  return (
+    <Suspense fallback={null}>
+      <SupplierOrdersPage />
+    </Suspense>
   );
 }

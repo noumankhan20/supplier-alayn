@@ -20,6 +20,7 @@ export interface PurchaseOrderItemApi {
 
 export interface PurchaseOrderApi {
   id: string;
+  /** Shared order number, e.g. "PO-SEA-20261102-001". Same in the restaurant app and notifications. */
   poNumber?: string;
   supplierId: string;
   status:
@@ -50,6 +51,7 @@ export interface PurchaseOrderApi {
   };
   supplier?: { id: string; name: string };
   createdAt?: string;
+  updatedAt?: string;
   items: PurchaseOrderItemApi[];
 }
 
