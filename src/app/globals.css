@@ -171,12 +171,23 @@ html {
   right: 0;
   z-index: 100;
   background: #ffffff;
-  border-bottom: 1px solid rgba(228, 228, 231, 0.8);
   transition: box-shadow 0.3s ease;
 }
 
+/* The nav is the pad's binding: a perforated tear line along its bottom edge */
+.landing-nav::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -4px;
+  height: 8px;
+  pointer-events: none;
+  background: radial-gradient(circle, rgba(27, 42, 74, 0.3) 1.3px, transparent 1.8px) 0 50% / 9px 8px repeat-x;
+}
+
 .landing-nav.scrolled {
-  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  box-shadow: 0 8px 16px -14px rgba(27, 42, 74, 0.35);
 }
 
 /* ---- Hero ---- */
@@ -192,53 +203,6 @@ html {
   line-height: 1.08;
   letter-spacing: -0.02em;
   color: var(--espresso);
-}
-
-/* ---- Hero aurora (Stripe-style soft gradient wash) ----
-   Only `transform` animates, so the blurred layer is rasterized once and
-   then moved by the compositor — no per-frame repaint, no GPU shader cost.
-   This is what replaced the WebGL field. */
-.hero-aurora {
-  position: absolute;
-  border-radius: 50%;
-  filter: blur(55px);
-  opacity: 0.5;
-  pointer-events: none;
-  will-change: transform;
-  transform: translateZ(0);
-}
-
-.hero-aurora-a {
-  top: -22%;
-  right: -10%;
-  width: 62vw;
-  height: 62vw;
-  max-width: 900px;
-  max-height: 900px;
-  background: radial-gradient(circle at 30% 30%, rgba(196, 30, 42, 0.30), transparent 65%);
-  animation: aurora-drift-a 26s ease-in-out infinite alternate;
-}
-
-.hero-aurora-b {
-  bottom: -30%;
-  left: -14%;
-  width: 58vw;
-  height: 58vw;
-  max-width: 820px;
-  max-height: 820px;
-  background: radial-gradient(circle at 60% 40%, rgba(27, 42, 74, 0.26), transparent 65%);
-  animation: aurora-drift-b 32s ease-in-out infinite alternate;
-}
-
-.hero-aurora-c {
-  top: 22%;
-  left: 26%;
-  width: 40vw;
-  height: 40vw;
-  max-width: 560px;
-  max-height: 560px;
-  background: radial-gradient(circle at 50% 50%, rgba(196, 30, 42, 0.08), transparent 68%);
-  animation: aurora-drift-c 38s ease-in-out infinite alternate;
 }
 
 /* ---- Auth Liquid Glass aurora ---- */
@@ -657,4 +621,163 @@ html {
   0% { opacity: 0; transform: translateX(-100%); }
   20% { opacity: 1; }
   100% { opacity: 0; transform: translateX(400%); }
+}
+
+/* ==============================
+   ORDER PAD — supplier landing world
+   A purchase-order book: off-white paper over pink and yellow carbon copies,
+   a navy binding strip, a perforated tear line and a torn bottom edge.
+   ============================== */
+
+:root {
+  --desk: #E9ECF1;
+  --pad-paper: #FBFAF6;
+  --pad-rule: rgba(27, 42, 74, 0.10);
+  --pad-rule-strong: rgba(27, 42, 74, 0.22);
+  --carbon-pink: #F4D3D6;
+  --carbon-yellow: #F3E4A8;
+  --ink-red: #C41E2A;
+  --ink-navy: #1B2A4A;
+  --pad-torn: linear-gradient(#000 0 0) top / 100% calc(100% - 7px) no-repeat,
+    conic-gradient(from -45deg at bottom, #0000, #000 1deg 89deg, #0000 90deg) bottom / 12px 7px repeat-x;
+}
+
+html:has(.landing-root) {
+  scrollbar-color: var(--ink-navy) var(--desk);
+}
+html:has(.landing-root)::-webkit-scrollbar { width: 12px; }
+html:has(.landing-root)::-webkit-scrollbar-track { background: var(--desk); }
+html:has(.landing-root)::-webkit-scrollbar-thumb {
+  background: var(--ink-navy);
+  border: 3px solid var(--desk);
+  border-radius: 8px;
+}
+
+.landing-root ::selection {
+  background: rgba(196, 30, 42, 0.18);
+  color: var(--ink-navy);
+}
+
+.landing-root :focus-visible {
+  outline: 2px solid var(--ink-red);
+  outline-offset: 3px;
+}
+
+.font-display {
+  font-family: var(--font-playfair), Georgia, serif;
+}
+
+.bg-desk {
+  background-color: var(--desk);
+}
+
+/* The pad casts one soft, navy-tinted shadow (drop-shadow follows the torn mask). */
+.pad {
+  position: relative;
+  filter: drop-shadow(0 22px 26px rgba(27, 42, 74, 0.16)) drop-shadow(0 2px 3px rgba(27, 42, 74, 0.10));
+}
+
+.pad-carbon {
+  position: absolute;
+  inset: 0;
+  border-radius: 6px 6px 0 0;
+  -webkit-mask: var(--pad-torn);
+  mask: var(--pad-torn);
+}
+.pad-carbon-pink {
+  background: var(--carbon-pink);
+  transform: translate(6px, 8px) rotate(1.1deg);
+}
+.pad-carbon-yellow {
+  background: var(--carbon-yellow);
+  transform: translate(12px, 15px) rotate(2.2deg);
+}
+
+.pad-binding {
+  position: relative;
+  z-index: 2;
+  border-radius: 6px 6px 0 0;
+  background: var(--ink-navy);
+  background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.07), transparent 60%);
+}
+
+.pad-sheet {
+  position: relative;
+  z-index: 1;
+  background: var(--pad-paper);
+  -webkit-mask: var(--pad-torn);
+  mask: var(--pad-torn);
+}
+
+/* Perforated tear line under the binding */
+.pad-perf {
+  height: 8px;
+  background: radial-gradient(circle, rgba(27, 42, 74, 0.28) 1.3px, transparent 1.8px) 0 50% / 9px 8px repeat-x;
+}
+
+.pad-mono {
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  font-variant-numeric: tabular-nums;
+}
+
+.pad-hand {
+  font-family: var(--font-hand), "Comic Sans MS", cursive;
+}
+
+/* Rubber stamp: double-ruled box, condensed lettering, ink grain via SVG filter */
+.stamp {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  padding: 5px 12px 4px;
+  border: 2.5px solid currentColor;
+  border-radius: 4px;
+  box-shadow: inset 0 0 0 2px var(--pad-paper), inset 0 0 0 3.5px currentColor;
+  font-family: var(--font-stamp), "Arial Narrow", sans-serif;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  line-height: 1;
+  white-space: nowrap;
+  filter: url(#stamp-ink);
+  mix-blend-mode: multiply;
+  pointer-events: none;
+  transform-origin: center;
+}
+.stamp-red { color: rgba(196, 30, 42, 0.9); }
+.stamp-navy { color: rgba(27, 42, 74, 0.88); }
+.stamp-main { font-size: 1.35rem; }
+.stamp-sub { font-size: 0.68rem; letter-spacing: 0.14em; font-weight: 700; }
+
+/* Exercise-book paper for the FAQ: faint rules plus a red margin line */
+.ruled-paper {
+  --margin-x: 28px;
+  background-color: var(--pad-paper);
+  background-image:
+    linear-gradient(90deg, transparent 0 calc(var(--margin-x, 28px) - 1px), rgba(196, 30, 42, 0.35) calc(var(--margin-x, 28px) - 1px) var(--margin-x, 28px), transparent var(--margin-x, 28px));
+}
+@media (min-width: 640px) {
+  .ruled-paper { --margin-x: 64px; }
+}
+
+/* Leave room on phones for the carbon copies that peek out to the right */
+@media (max-width: 639px) {
+  .pad:has(> .pad-carbon) { margin-right: 12px; }
+}
+
+/* Divider-tab staircase on the navy band */
+.index-tab {
+  transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.index-tab:hover {
+  transform: translateX(10px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .index-tab, .index-tab:hover { transition: none; transform: none; }
+}
+
+.font-stamp {
+  font-family: var(--font-stamp), "Arial Narrow", sans-serif;
 }

@@ -122,7 +122,7 @@ export default function LandingNav() {
             <a
               key={l.href}
               href={l.href}
-              className="rounded-full px-3.5 py-2 text-[13px] font-medium text-zinc-600 transition-colors hover:bg-zinc-100 hover:text-zinc-900"
+              className="px-3.5 py-2 text-[14px] font-medium text-[#46556C] underline decoration-transparent decoration-2 underline-offset-[7px] transition-colors hover:text-[#1B2A4A] hover:decoration-[#C41E2A]"
             >
               {l.label}
             </a>
@@ -140,7 +140,7 @@ export default function LandingNav() {
                 onClick={() => setDropdownOpen((prev) => !prev)}
                 className="flex items-center gap-2.5 rounded-full bg-white/90 border border-zinc-200/80 px-3 py-1.5 shadow-sm hover:bg-zinc-50 transition-all duration-200 min-h-[44px]"
               >
-                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#D3232A] text-xs font-bold text-white shadow-sm" suppressHydrationWarning>
+                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#C41E2A] text-xs font-bold text-white shadow-sm" suppressHydrationWarning>
                   {initial}
                 </div>
                 <span className="text-xs font-semibold text-zinc-800" suppressHydrationWarning>
@@ -154,7 +154,7 @@ export default function LandingNav() {
                   <div className="px-3 py-2 border-b border-zinc-100 mb-1">
                     <p className="text-xs font-bold text-zinc-900 truncate" suppressHydrationWarning>{user.name}</p>
                     <p className="text-[11px] text-zinc-400 font-medium truncate" suppressHydrationWarning>{user.email}</p>
-                    <span className="inline-block mt-1 rounded-full bg-red-50 px-2 py-0.5 text-[10px] font-bold text-[#D3232A]">
+                    <span className="inline-block mt-1 rounded-full bg-red-50 px-2 py-0.5 text-[10px] font-bold text-[#C41E2A]">
                       {formatRole(user.role)}
                     </span>
                   </div>
@@ -164,7 +164,7 @@ export default function LandingNav() {
                     onClick={() => setDropdownOpen(false)}
                     className="flex items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-semibold text-zinc-700 hover:bg-zinc-100 hover:text-zinc-900 transition-colors"
                   >
-                    <LayoutGrid className="h-4 w-4 text-[#D3232A]" />
+                    <LayoutGrid className="h-4 w-4 text-[#C41E2A]" />
                     Purchase Orders
                   </Link>
 
@@ -193,16 +193,7 @@ export default function LandingNav() {
               <Link
                 href="/login"
                 id="nav-login"
-                className="nav-login-btn"
-                style={{
-                  fontSize: "13px",
-                  fontWeight: 600,
-                  color: "#1A1D24",
-                  textDecoration: "none",
-                  padding: "10px 18px",
-                  borderRadius: "20px",
-                  transition: "background-color 0.15s ease",
-                }}
+                className="inline-flex min-h-[44px] items-center px-3 text-[14px] font-semibold text-[#1B2A4A] underline decoration-transparent decoration-2 underline-offset-[7px] transition-colors hover:decoration-[#C41E2A]"
               >
                 Log in
               </Link>
@@ -214,20 +205,9 @@ export default function LandingNav() {
                 <Link
                   href="/signup"
                   id="nav-join-supplier"
-                  className="nav-signup-btn"
-                  style={{
-                    fontSize: "13px",
-                    fontWeight: 600,
-                    color: "#FFFFFF",
-                    backgroundColor: "#1A1D24",
-                    textDecoration: "none",
-                    padding: "8px 16px",
-                    borderRadius: "20px",
-                    display: "inline-block",
-                    transition: "transform 0.15s ease, background-color 0.15s ease",
-                  }}
+                  className="inline-flex h-11 items-center rounded-[4px] bg-[#C41E2A] px-4 text-white shadow-[inset_0_0_0_2.5px_#C41E2A,inset_0_0_0_3.5px_rgba(255,255,255,0.6)] transition-colors duration-200 hover:bg-[#A81822]"
                 >
-                  Join as a supplier
+                  <span className="font-stamp text-[16px] font-extrabold uppercase tracking-[0.1em]">Join as a supplier</span>
                 </Link>
               </motion.div>
             </>
@@ -256,12 +236,12 @@ export default function LandingNav() {
               animate={{ opacity: 1, height: "auto" }}
               exit={{ opacity: 0, height: 0 }}
               transition={{ duration: 0.25, ease: "easeOut" }}
-              className="sm:hidden relative z-10 bg-white border-b border-zinc-200/80 px-5 py-6 space-y-4 overflow-hidden"
+              className="sm:hidden relative z-10 bg-white px-5 py-6 space-y-4 overflow-hidden"
             >
             {isAuthenticated && user ? (
               <div className="space-y-3">
                 <div className="flex items-center gap-3 p-3 rounded-2xl bg-zinc-50 border border-zinc-200/80">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#D3232A] text-sm font-bold text-white shadow-sm">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#C41E2A] text-sm font-bold text-white shadow-sm">
                     {initial}
                   </div>
                   <div className="overflow-hidden">
@@ -273,7 +253,7 @@ export default function LandingNav() {
                 <Link
                   href="/orders"
                   onClick={() => setMobileMenuOpen(false)}
-                  className="flex items-center justify-center gap-2 rounded-xl bg-[#D3232A] px-4 py-3 text-xs font-bold text-white shadow-sm transition-transform active:scale-95 min-h-[44px]"
+                  className="flex items-center justify-center gap-2 rounded-xl bg-[#C41E2A] px-4 py-3 text-xs font-bold text-white shadow-sm transition-transform active:scale-95 min-h-[44px]"
                 >
                   <LayoutGrid className="h-4 w-4" />
                   Purchase Orders
@@ -293,9 +273,9 @@ export default function LandingNav() {
                 <Link
                   href="/signup"
                   onClick={() => setMobileMenuOpen(false)}
-                  className="flex items-center justify-center rounded-xl bg-[#C41E2A] px-4 py-3 text-[13px] font-bold text-white shadow-md transition-transform active:scale-95 min-h-[48px] mb-2"
+                  className="mb-2 flex min-h-[52px] items-center justify-center rounded-[5px] bg-[#C41E2A] px-4 text-white shadow-[inset_0_0_0_3px_#C41E2A,inset_0_0_0_4.5px_rgba(255,255,255,0.6)] transition-transform active:scale-[0.98]"
                 >
-                  Join as a supplier
+                  <span className="font-stamp text-[19px] font-extrabold uppercase tracking-[0.1em]">Join as a supplier</span>
                 </Link>
 
                 <div className="flex flex-col gap-1 py-2 border-y border-zinc-100 mb-2">
@@ -304,7 +284,7 @@ export default function LandingNav() {
                       key={l.href}
                       href={l.href}
                       onClick={() => setMobileMenuOpen(false)}
-                      className="px-3 py-3 text-[13px] font-semibold text-zinc-800 hover:bg-zinc-50 rounded-lg transition-colors"
+                      className="flex min-h-[44px] items-center px-3 text-[15px] font-semibold text-[#1B2A4A] transition-colors hover:text-[#C41E2A]"
                     >
                       {l.label}
                     </a>
@@ -314,7 +294,7 @@ export default function LandingNav() {
                 <Link
                   href="/login"
                   onClick={() => setMobileMenuOpen(false)}
-                  className="flex items-center justify-center rounded-xl bg-zinc-100 border border-zinc-200/80 px-4 py-3 text-xs font-bold text-zinc-900 transition-colors min-h-[44px]"
+                  className="flex min-h-[44px] items-center justify-center text-[15px] font-semibold text-[#1B2A4A] underline decoration-[#1B2A4A]/25 decoration-2 underline-offset-[6px]"
                 >
                   Log in
                 </Link>

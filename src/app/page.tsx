@@ -10,6 +10,7 @@ import Features from "@/components/landing/supplier/Features";
 import WhoItsFor from "@/components/landing/supplier/WhoItsFor";
 import Faq from "@/components/landing/supplier/Faq";
 import FinalCta from "@/components/landing/supplier/FinalCta";
+import { InkDefs } from "@/components/landing/supplier/pad/OrderPad";
 
 const title = "Alayn Suppliers | Take purchase orders from restaurants";
 const description =
@@ -31,6 +32,7 @@ export default function SupplierLandingPage() {
     <>
       <IntroReveal />
       <div className="landing-root">
+        <InkDefs />
         <LandingNav />
         <main>
           <SupplierHero />

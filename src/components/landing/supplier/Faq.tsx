@@ -24,32 +24,38 @@ const FAQS = [
   },
 ];
 
+/** The back pages of the pad: ruled paper with a margin line. */
 export default function Faq() {
   return (
-    <section id="faq" aria-labelledby="faq-heading" className="scroll-mt-24 bg-white px-4 sm:px-6 py-24 sm:py-32">
-      <div className="mx-auto grid max-w-6xl gap-12 lg:grid-cols-[1fr_1.6fr]">
+    <section id="faq" aria-labelledby="faq-heading" className="ruled-paper scroll-mt-20 py-24 sm:py-32">
+      <div className="mx-auto grid max-w-6xl gap-12 pl-[calc(var(--margin-x)+1.25rem)] pr-4 sm:pr-6 lg:grid-cols-[1fr_1.6fr] lg:pl-[calc(var(--margin-x)+2rem)]">
         <Assemble as="div">
-          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[#C41E2A]">Questions</p>
-          <h2 id="faq-heading" className="mt-3 text-[clamp(1.75rem,3.5vw,2.5rem)] font-extrabold leading-tight tracking-[-0.02em] text-[#1B2A4A]">
+          <h2
+            id="faq-heading"
+            className="font-display text-balance text-[clamp(2rem,4.4vw,3.1rem)] font-bold leading-[1.08] tracking-[-0.02em] text-[#1B2A4A]"
+          >
             Good to know before you join
           </h2>
-          <p className="mt-4 text-[15px] leading-relaxed text-[#56657C]">
+          <p className="mt-5 text-[16px] leading-relaxed text-[#46556C]">
             Something else on your mind? Write to{" "}
-            <a href="mailto:info@alaynai.com" className="font-semibold text-[#1B2A4A] underline underline-offset-4">
+            <a
+              href="mailto:info@alaynai.com"
+              className="font-semibold text-[#1B2A4A] underline decoration-[#C41E2A]/50 decoration-2 underline-offset-4 hover:decoration-[#C41E2A]"
+            >
               info@alaynai.com
             </a>
             .
           </p>
         </Assemble>
 
-        <Assemble as="div" delay={0.06} className="divide-y divide-[#1B2A4A]/10 border-y border-[#1B2A4A]/10">
+        <Assemble as="div" delay={0.06} className="border-t-2 border-[#1B2A4A]/80">
           {FAQS.map(({ q, a }) => (
-            <details key={q} className="group py-1">
-              <summary className="flex cursor-pointer list-none items-center justify-between gap-6 py-5 text-left text-base font-semibold text-[#1B2A4A] [&::-webkit-details-marker]:hidden">
+            <details key={q} className="group border-b border-[#1B2A4A]/15">
+              <summary className="flex min-h-[64px] cursor-pointer list-none items-center justify-between gap-6 py-4 text-left text-[17px] font-semibold text-[#1B2A4A] transition-colors hover:text-[#C41E2A] [&::-webkit-details-marker]:hidden">
                 {q}
-                <Plus className="h-5 w-5 shrink-0 text-[#56657C] transition-transform duration-200 group-open:rotate-45" />
+                <Plus className="h-5 w-5 shrink-0 text-[#C41E2A] transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] group-open:rotate-45" />
               </summary>
-              <p className="pb-6 pr-10 text-[15px] leading-relaxed text-[#56657C]">{a}</p>
+              <p className="max-w-[62ch] pb-6 pr-8 text-[16px] leading-[2rem] text-[#46556C]">{a}</p>
             </details>
           ))}
         </Assemble>
