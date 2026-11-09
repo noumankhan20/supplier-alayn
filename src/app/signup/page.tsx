@@ -17,6 +17,7 @@ import { writeUserHint } from "@/components/landing/landingSession";
 import AuthShell from "@/components/auth/AuthShell";
 import AuthField, { authInputClass } from "@/components/auth/AuthField";
 import GuestGuard from "@/components/auth/GuestGuard";
+import LetterheadPad from "@/components/auth/LetterheadPad";
 
 const SUPPLY_CATEGORIES = [
   "Dairy & Eggs",
@@ -186,6 +187,7 @@ function SignupFormContent({ onRegistered }: { onRegistered: () => void }) {
 
   return (
     <AuthShell
+      aside={<LetterheadPad data={formData} done={submitSuccess} />}
       title={step === 1 ? "Join as a supplier" : "Tell restaurants who you are"}
       subtitle={
         step === 1
@@ -209,9 +211,12 @@ function SignupFormContent({ onRegistered }: { onRegistered: () => void }) {
           const current = step === n && !submitSuccess;
           return (
             <li key={label} aria-current={current ? "step" : undefined}>
-              <div className={`h-1 rounded-full ${done || current ? "bg-[#C41E2A]" : "bg-zinc-200"}`} />
-              <p className={`mt-2 flex items-center gap-1.5 text-[13px] font-medium ${current || done ? "text-[#1B2A4A]" : "text-zinc-400"}`}>
-                {done && <Check className="h-3.5 w-3.5 text-emerald-600" />}
+              <div
+                aria-hidden
+                className={`h-1 rounded-full ${current ? "bg-[#C41E2A]" : done ? "bg-[#1B2A4A]" : "bg-[#1B2A4A]/15"}`}
+              />
+              <p className={`mt-2 flex items-center gap-1.5 text-[13px] font-semibold ${current || done ? "text-[#1B2A4A]" : "text-[#56657C]"}`}>
+                {done && <Check className="h-3.5 w-3.5 text-[#1B2A4A]" strokeWidth={3} />}
                 Step {n} · {label}
               </p>
             </li>
@@ -220,7 +225,7 @@ function SignupFormContent({ onRegistered }: { onRegistered: () => void }) {
       </ol>
 
       {currentStatus === "authenticated" && currentUser && currentUser.role !== "SUPPLIER" && (
-        <div className="mb-6 flex items-start justify-between gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+        <div className="mb-6 flex items-start justify-between gap-3 rounded-[5px] bg-[var(--carbon-yellow)] p-4 text-sm text-[#1B2A4A] shadow-[0_8px_16px_-12px_rgba(27,42,74,0.5)]">
           <p>
             You’re signed in to Alayn as <span className="font-semibold">{currentUser.name || currentUser.email}</span>{" "}
             ({formatRole(currentUser.role)}). Sign out first to create a supplier account.
@@ -232,14 +237,14 @@ function SignupFormContent({ onRegistered }: { onRegistered: () => void }) {
       )}
 
       {submitError && (
-        <div role="alert" className="mb-6 flex gap-3 rounded-xl border border-[#C41E2A]/20 bg-[#C41E2A]/[0.06] p-4 text-sm text-[#9B131E]">
+        <div role="alert" className="mb-6 flex gap-3 rounded-[5px] bg-[var(--carbon-pink)] p-4 text-sm text-[#7A0F18] shadow-[0_8px_16px_-12px_rgba(27,42,74,0.5)]">
           <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
           <p>{submitError}</p>
         </div>
       )}
 
       {submitSuccess && (
-        <div role="status" className="mb-6 flex items-center gap-3 rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm font-medium text-emerald-800">
+        <div role="status" className="mb-6 flex items-center gap-3 rounded-[5px] bg-[var(--pad-paper)] p-4 text-sm font-semibold text-[#1B2A4A] shadow-[0_8px_16px_-12px_rgba(27,42,74,0.5)] ring-1 ring-[#1B2A4A]/10">
           <Check className="h-4 w-4 shrink-0" />
           Account created. Taking you to your catalog…
         </div>
@@ -282,7 +287,7 @@ function SignupFormContent({ onRegistered }: { onRegistered: () => void }) {
 
             <button
               type="submit"
-              className="flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-[#C41E2A] px-4 text-[15px] font-semibold text-white transition-colors hover:bg-[#A81822] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#C41E2A]/25"
+              className="btn-stamp h-[52px] w-full"
             >
               Continue
               <ArrowRight className="h-4 w-4" />
@@ -347,7 +352,7 @@ function SignupFormContent({ onRegistered }: { onRegistered: () => void }) {
                   setFieldErrors({});
                   setStep(1);
                 }}
-                className="inline-flex h-12 items-center justify-center gap-2 rounded-xl border border-zinc-300 px-5 text-[15px] font-semibold text-[#1B2A4A] transition-colors hover:bg-zinc-50"
+                className="link-ruled inline-flex h-[52px] items-center justify-center gap-2 px-3 text-[15px]"
               >
                 <ArrowLeft className="h-4 w-4" />
                 Back
@@ -355,7 +360,7 @@ function SignupFormContent({ onRegistered }: { onRegistered: () => void }) {
               <button
                 type="submit"
                 disabled={isLoading || !hydrated || submitSuccess}
-                className="flex h-12 flex-1 items-center justify-center gap-2 rounded-xl bg-[#C41E2A] px-4 text-[15px] font-semibold text-white transition-colors hover:bg-[#A81822] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#C41E2A]/25 disabled:opacity-60"
+                className="btn-stamp h-[52px] flex-1"
               >
                 {isLoading ? (
                   <>

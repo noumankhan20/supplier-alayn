@@ -98,7 +98,7 @@ function LoginFormContent() {
       }
     >
       {currentStatus === "authenticated" && currentUser && currentUser.role !== "SUPPLIER" && (
-        <div className="mb-6 flex items-start justify-between gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+        <div className="mb-6 flex items-start justify-between gap-3 rounded-[5px] bg-[var(--carbon-yellow)] p-4 text-sm text-[#1B2A4A] shadow-[0_8px_16px_-12px_rgba(27,42,74,0.5)]">
           <p>
             You’re signed in to Alayn as <span className="font-semibold">{currentUser.name || currentUser.email}</span>{" "}
             ({formatRole(currentUser.role)}). Sign out to use a supplier account.
@@ -115,7 +115,7 @@ function LoginFormContent() {
 
       <form className="space-y-5" method="post" onSubmit={handleSubmit} noValidate>
         {(error || wrongPortalRole) && (
-          <div role="alert" className="flex gap-3 rounded-xl border border-[#C41E2A]/20 bg-[#C41E2A]/[0.06] p-4 text-sm text-[#9B131E]">
+          <div role="alert" className="flex gap-3 rounded-[5px] bg-[var(--carbon-pink)] p-4 text-sm text-[#7A0F18] shadow-[0_8px_16px_-12px_rgba(27,42,74,0.5)]">
             <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
             {wrongPortalRole ? (
               <div>
@@ -199,7 +199,7 @@ function LoginFormContent() {
         <button
           type="submit"
           disabled={isLoading || !hydrated}
-          className="flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-[#C41E2A] px-4 text-[15px] font-semibold text-white transition-colors hover:bg-[#A81822] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#C41E2A]/25 disabled:opacity-60"
+          className="btn-stamp h-[52px] w-full"
         >
           {isLoading ? (
             <>

@@ -4,11 +4,11 @@ import { cn } from "@/lib/utils";
 /** Input styling shared by the auth forms. */
 export function authInputClass(hasError?: boolean, extra?: string) {
   return cn(
-    "block w-full rounded-xl border bg-white px-3.5 text-[15px] text-[#1B2A4A] placeholder:text-zinc-400 transition-colors",
+    "block w-full rounded-[5px] border bg-white px-3.5 text-[15px] text-[#1B2A4A] placeholder:text-[#8A96A8] transition-colors",
     "focus:outline-none focus:ring-4",
     hasError
       ? "border-[#C41E2A] focus:border-[#C41E2A] focus:ring-[#C41E2A]/10"
-      : "border-zinc-300 hover:border-zinc-400 focus:border-[#1B2A4A] focus:ring-[#1B2A4A]/10",
+      : "border-[#1B2A4A]/25 hover:border-[#1B2A4A]/45 focus:border-[#1B2A4A] focus:ring-[#1B2A4A]/10",
     extra
   );
 }
@@ -38,7 +38,7 @@ export default function AuthField({
       <div className="mb-1.5 flex items-center justify-between gap-2">
         <label htmlFor={id} className="text-sm font-medium text-[#1B2A4A]">
           {label}
-          {optional && <span className="ml-1 font-normal text-zinc-400">(optional)</span>}
+          {optional && <span className="ml-1 font-normal text-[#56657C]">(optional)</span>}
         </label>
         {labelAction}
       </div>
@@ -48,7 +48,7 @@ export default function AuthField({
           {error}
         </p>
       ) : hint ? (
-        <p id={`${id}-hint`} className="mt-1.5 text-[13px] text-zinc-500">
+        <p id={`${id}-hint`} className="mt-1.5 text-[13px] text-[#56657C]">
           {hint}
         </p>
       ) : null}

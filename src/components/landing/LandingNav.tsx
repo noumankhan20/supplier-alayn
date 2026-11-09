@@ -103,7 +103,7 @@ export default function LandingNav() {
         }}
       >
         {/* Brand logo */}
-        <Link href="/" className="nav-brand flex items-center overflow-visible shrink-0">
+        <Link href="/" aria-label="Alayn supplier portal home" className="nav-brand flex items-center gap-3 overflow-visible shrink-0 sm:gap-3.5">
           <Image
             src="/gptlogo.webp"
             alt="Alayn Suppliers"
@@ -114,6 +114,9 @@ export default function LandingNav() {
             className="w-[90px] sm:w-[115px] h-auto transform-gpu object-contain"
             loading="eager"
           />
+          {/* Same label as login/signup, kept apart from the TM logo */}
+          <span aria-hidden className="h-5 w-px bg-[#1B2A4A]/20" />
+          <span className="text-[12px] font-semibold text-[#56657C] sm:text-[13px]">Supplier portal</span>
         </Link>
 
         {/* Section links */}
@@ -205,9 +208,9 @@ export default function LandingNav() {
                 <Link
                   href="/signup"
                   id="nav-join-supplier"
-                  className="inline-flex h-11 items-center rounded-[4px] bg-[#C41E2A] px-4 text-white shadow-[inset_0_0_0_2.5px_#C41E2A,inset_0_0_0_3.5px_rgba(255,255,255,0.6)] transition-colors duration-200 hover:bg-[#A81822]"
+                  className="btn-stamp btn-stamp-sm"
                 >
-                  <span className="font-stamp text-[16px] font-extrabold uppercase tracking-[0.1em]">Join as a supplier</span>
+                  Join as a supplier
                 </Link>
               </motion.div>
             </>
@@ -273,9 +276,9 @@ export default function LandingNav() {
                 <Link
                   href="/signup"
                   onClick={() => setMobileMenuOpen(false)}
-                  className="mb-2 flex min-h-[52px] items-center justify-center rounded-[5px] bg-[#C41E2A] px-4 text-white shadow-[inset_0_0_0_3px_#C41E2A,inset_0_0_0_4.5px_rgba(255,255,255,0.6)] transition-transform active:scale-[0.98]"
+                  className="btn-stamp mb-2 min-h-[52px] w-full"
                 >
-                  <span className="font-stamp text-[19px] font-extrabold uppercase tracking-[0.1em]">Join as a supplier</span>
+                  Join as a supplier
                 </Link>
 
                 <div className="flex flex-col gap-1 py-2 border-y border-zinc-100 mb-2">

@@ -110,9 +110,9 @@ export default function SupplierHero() {
             <Link
               href="/signup"
               id="cta-hero"
-              className="group inline-flex h-[52px] items-center justify-center gap-2.5 rounded-[5px] bg-[#C41E2A] px-7 text-white shadow-[inset_0_0_0_3px_#C41E2A,inset_0_0_0_4.5px_rgba(255,255,255,0.6),0_10px_20px_-12px_rgba(27,42,74,0.6)] transition-[background-color,transform] duration-200 hover:bg-[#A81822] active:translate-y-px"
+              className="btn-stamp group h-[52px] px-7 text-[20px]"
             >
-              <span className="font-stamp text-[20px] font-extrabold uppercase tracking-[0.1em]">Join as a supplier</span>
+              Join as a supplier
               <ArrowRight className="h-4 w-4 transition-transform duration-200 group-hover:translate-x-0.5" />
             </Link>
             <a

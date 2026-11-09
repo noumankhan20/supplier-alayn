@@ -257,10 +257,10 @@ The only rounded silhouettes are object-true: the phone frame (34px outer, 26px 
 ### Buttons
 Rubber-stamped and physical.
 - **Shape:** sharp-cornered (5px radius) with a double-ruled frame.
-- **Primary (hero):** solid crimson with white Big Shoulders 800 caps, 52px tall, 28px side padding, an inset 1.5px white rule inside a 3px crimson inset, and the CTA lift shadow. A trailing arrow nudges 2px right on hover.
+- **Primary (`.btn-stamp` in globals.css; used by the hero, nav, mobile menu and auth forms):** solid crimson with white Big Shoulders 800 caps, 48–52px tall (`.btn-stamp-sm` is the 44px nav size), 28px side padding, an inset 1.5px white rule inside a 3px crimson inset, and the CTA lift shadow. A trailing arrow nudges 2px right on hover.
 - **Hover / Active:** deepens to Deep Crimson; pressing moves it down 1px.
 - **Outline stamp (final CTA):** a crimson-ink stamp on pad paper, 56px tall, 3px border with an inner rule, rotated -3°. On hover it straightens to 0° and fills crimson with white text; pressing scales it to 0.97. Easing is cubic-bezier(0.16, 1, 0.3, 1) over 300ms.
-- **Text link:** navy semibold with a 2px underline at 25% navy, offset 6px, at least 44px tall. The underline turns crimson on hover.
+- **Text link (`.link-ruled`):** navy semibold with a 2px underline at 25% navy, offset 6px, at least 44px tall. The underline turns crimson on hover. Secondary actions such as "See how it works", "Back" and "Home" use it.
 - **Focus:** a 2px crimson outline, offset 3px, everywhere on the landing.
 
 ### The Order Pad (signature)
@@ -268,12 +268,12 @@ The core object, built from PadStack and PadSheet.
 - **Binding:** a 36px navy strip with a faint top gloss. The left side reads "ALAYN · {title}" in white stamp caps at 85% opacity; the right side carries a small "EXAMPLE" tag on white at 15% opacity.
 - **Carbons:** yellow and pink sheets under the top sheet, offset and rotated. They are optional and turned off for single-step sheets.
 - **Top sheet:** pad paper with a perforation, a stamp-caps title, a crimson mono order number, a printed-label form block, mono line items over hairline rules, and a total under a double rule. The foot is left empty for stamps.
-- **Motion:** lines reveal left to right with a clip-path over 0.5s (ease 0.16, 1, 0.3, 1), 380ms apart. On desktop the sheet tears off up and to the right (y -60, x 70, rotate 9°) on a spring (170/22).
+- **Motion:** lines reveal left to right with a clip-path over 0.5s (ease 0.16, 1, 0.3, 1), 380ms apart. On desktop the top sheet tears off: it stays opaque and on top (z-index 2) while it moves up and right (y -70, x 120, rotate 11°) over 0.55s with an ease-in, fading only in the last 30%. The next sheet is already underneath and does not fade in.
 
 ### Rubber Stamp (signature)
 - **Style:** Big Shoulders 800 caps (1.35rem main, 0.68rem sub), double-ruled frame, crimson ink at 90% or navy ink at 88%, multiply blend, roughened and speckled by the shared `#stamp-ink` SVG filter.
 - **Landing:** comes down from scale 1.7 and 9° more rotation, then settles on a stiff spring (560/26, mass 0.7). The pad drops 4px when the stamp lands.
-- **Vocabulary:** NEW ORDER, PACKING, PART SENT, DELIVERED, OUT OF STOCK. These are status words from the product, never slogans.
+- **Vocabulary:** NEW ORDER, PACKING, PART SENT, 2 OF 3 DELIVERED, OUT OF STOCK, READY FOR ORDERS (signup success). These are status words from the product, never slogans.
 
 ### Slips and Tags
 Torn-edge slips (dispatch, out of stock, deliver to) on paper or carbon pink. The fanned inbox stack sits under a navy "To do · 2" tab. The yellow price tag shows a crimson strike over the old price and the new price in hand.
@@ -284,8 +284,22 @@ Torn-edge slips (dispatch, out of stock, deliver to) on paper or carbon pink. Th
 ### FAQ Rows
 Native `<details>` on ruled paper, under a 2px navy top rule with 15% navy row dividers. Summaries are 17px semibold, at least 64px tall, and turn crimson on hover. The crimson plus rotates 45° on open (300ms).
 
-### Navigation
-The landing reuses the shared site nav (white bar, zinc text, rounded-full pills, navy "Join as a supplier" pill). It predates the order pad world; see Do's and Don'ts.
+### Navigation and Footer
+- **Nav:** a white bar with a 1px navy hairline at 10% opacity, which gains a soft shadow on scroll.
+- **Portal label:** on the nav, login and signup, the TM logo is followed by a 1px divider (navy at 20%) and "Supplier portal" in 12–13px semibold Muted Slate. The label keeps clear space from the logo and is never set as a badge or inside the mark. Section links and "Log in" are plain text with a crimson underline on hover. "Join as a supplier" uses `.btn-stamp-sm`. The mobile menu uses a full-width `.btn-stamp`, then the links, then a `.link-ruled` "Log in".
+- **Footer:** navy, opening with a 7px desk-coloured torn edge so the page ends like a sheet torn off the pad. Links are #C9D3E5 and turn #FF8A8F on hover. Headings and the copyright line are #9FAECB. The TM logo stays on its white panel.
+
+### Auth Pages (login, signup)
+Task pages: the form stays native and plain, and the order-pad world lives around it.
+- **Shell (`AuthShell`):** a plain white form pane. The h1 is Playfair. Inputs have 5px corners. The primary action is `.btn-stamp` and Back/Home are `.link-ruled`.
+- **Status slips:**
+  - **Warnings:** carbon-yellow paper with navy text.
+  - **Errors:** carbon-pink paper with #7A0F18 text.
+  - **Success:** pad paper with a navy tick.
+- **Signup progress:** two 4px bars. The current bar is crimson, the done bar navy with a navy tick, and upcoming steps are navy at 15%.
+- **Login panel (`AuthShowcase`):** on the desk ground, a Playfair headline, one sentence, and the shared `InboxStack` labelled "Example orders."
+- **Letterhead Pad (signup panel, signature):** the supplier's own price-list pad, tagged "PREVIEW". It prints what they type: business name in stamp caps, category in crimson mono, dispatch address, GSTIN, "Orders: name · phone", and delivery terms in Kalam. Blank fields wait as dashed Kalam hints. It never shows email or password. The empty product rows read "your first product goes here", and a navy READY FOR ORDERS stamp lands on success.
+- **Loader (`AuthLoader`):** desk ground, the TM logo, and nine tear-line dots inking crimson in turn (static under reduced motion).
 
 ## Do's and Don'ts
 
@@ -304,5 +318,6 @@ The landing reuses the shared site nav (white bar, zinc text, rounded-full pills
 - **Don't** use icon tiles, feature cards with glyph icons, or a SaaS hero-and-grid layout.
 - **Don't** add coloured glows, gradients on paper, or hard offset shadows.
 - **Don't** show real restaurant logos, supplier counts, order counts or testimonials on the pad.
+- **Don't** use the perforation dots on their own (under the nav, as page borders or as progress). Away from a pad they read as a random dotted line, not a tear line. They belong only between a pad's binding and its sheet.
 - **Don't** write "challan"; say purchase order, order pad or delivery slip.
 - **Don't** put small Muted Slate (4.3:1) or crimson (4.2:1) text on carbon pink.
